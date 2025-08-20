@@ -1,0 +1,99 @@
+{
+  "welcome": {
+    "title": "Welcome to MamaCare Zimbabwe",
+    "subtitle": "Your trusted companion for maternal health and wellness",
+    "description": "Access expert guidance, track your pregnancy journey, and connect with healthcare professionals - all in your preferred language.",
+    "registerButton": "Register as New User",
+    "loginButton": "Log In",
+    "getStarted": "Get Started"
+  },
+  "language": {
+    "title": "Choose Your Language",
+    "subtitle": "Select your preferred language to continue",
+    "english": "English",
+    "shona": "Shona",
+    "ndebele": "Ndebele",
+    "continue": "Continue"
+  },
+  "register": {
+    "title": "Create Your Account",
+    "subtitle": "Join MamaCare Zimbabwe today",
+    "firstName": "First Name",
+    "firstNamePlaceholder": "Enter your first name",
+    "lastName": "Last Name",
+    "lastNamePlaceholder": "Enter your last name",
+    "email": "Email Address",
+    "emailPlaceholder": "Enter your email address",
+    "phoneNumber": "Phone Number",
+    "phoneNumberPlaceholder": "Enter your phone number",
+    "password": "Create Password",
+    "passwordPlaceholder": "Create a strong password",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Confirm your password",
+    "registerButton": "Create Account",
+    "alreadyHaveAccount": "Already have an account?",
+    "loginLink": "Log In",
+    "errors": {
+      "fillAllFields": "Please fill in all fields",
+      "passwordMismatch": "Passwords do not match",
+      "emailExists": "Email address already registered"
+    }
+  },
+  "login": {
+    "title": "Welcome Back",
+    "subtitle": "Log in to your MamaCare account",
+    "email": "Email Address",
+    "emailPlaceholder": "Enter your email address",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "loginButton": "Log In",
+    "noAccount": "Don't have an account?",
+    "registerLink": "Register",
+    "errors": {
+      "fillAllFields": "Please fill in all fields",
+      "invalidCredentials": "Invalid email or password"
+    }
+  },
+  "dashboard": {
+    "title": "MamaCare Zimbabwe",
+    "welcome": "Welcome back",
+    "subtitle": "Your maternal health companion",
+    "pregnancyTracker": {
+      "title": "Pregnancy Tracker",
+      "subtitle": "Track your pregnancy week by week"
+    },
+    "healthTips": {
+      "title": "Health Tips",
+      "subtitle": "Expert advice for a healthy pregnancy"
+    },
+    "symptomReporting": {
+      "title": "Symptom Reporting",
+      "subtitle": "Track and report your symptoms"
+    },
+    "appointmentReminders": {
+      "title": "Appointment Reminders",
+      "subtitle": "Never miss an important appointment"
+    },
+    "emergencyCall": {
+      "title": "Emergency Call",
+      "subtitle": "Quick access to emergency services"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "selectLanguage": "Select Language",
+    "preferences": "Preferences",
+    "notifications": "Notifications",
+    "security": "Security & Privacy",
+    "pinCode": "PIN Code",
+    "privacy": "Privacy Settings",
+    "support": "Support",
+    "help": "Help & Support",
+    "contact": "Contact Us",
+    "about": "About MamaCare",
+    "logout": "Logout",
+    "close": "Close",
+    "change": "Change"
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "welcome": {
+    "title": "Mauya ku MamaCare Zimbabwe",
+    "subtitle": "Shamwari yako yekuvimba nezveutano hwaamai",
+    "description": "Wana ziviso dzenyanzvi, tevera rwendo rwako rwemimba, uye batana nevanachiremba - zvese nemutauro waunoda.",
+    "registerButton": "Nyoreresa Semutsva",
+    "loginButton": "Pinda",
+    "getStarted": "Tanga"
+  },
+  "language": {
+    "title": "Sarudza Mutauro Wako",
+    "subtitle": "Sarudza mutauro waunoda kuti uenderere mberi",
+    "english": "Chirungu",
+    "shona": "ChiShona",
+    "ndebele": "IsiNdebele",
+    "continue": "Enderera"
+  },
+  "register": {
+    "title": "Gadzira Account Yako",
+    "subtitle": "Batana neMamaCare Zimbabwe nhasi",
+    "firstName": "Zita Rekutanga",
+    "firstNamePlaceholder": "Isa zita rako rekutanga",
+    "lastName": "Zita Remhuri",
+    "lastNamePlaceholder": "Isa zita remhuri yako",
+    "email": "Email Address",
+    "emailPlaceholder": "Isa email address yako",
+    "phoneNumber": "Nhamba Yefoni",
+    "phoneNumberPlaceholder": "Isa nhamba yako yefoni",
+    "password": "Gadzira Password",
+    "passwordPlaceholder": "Gadzira password yakasimba",
+    "confirmPassword": "Simbisa Password",
+    "confirmPasswordPlaceholder": "Simbisa password yako",
+    "registerButton": "Gadzira Account",
+    "alreadyHaveAccount": "Une account kare?",
+    "loginLink": "Pinda",
+    "errors": {
+      "fillAllFields": "Ndapota zadza ese mafiirizi",
+      "passwordMismatch": "Mapassword haafanani",
+      "emailExists": "Email address yakapindwa kare"
+    }
+  },
+  "login": {
+    "title": "Mauya Zvakare",
+    "subtitle": "Pinda muaccount yako yeMamaCare",
+    "email": "Email Address",
+    "emailPlaceholder": "Isa email address yako",
+    "password": "Password",
+    "passwordPlaceholder": "Isa password yako",
+    "loginButton": "Pinda",
+    "noAccount": "Hauna account?",
+    "registerLink": "Nyoreresa",
+    "errors": {
+      "fillAllFields": "Ndapota zadza ese mafiirizi",
+      "invalidCredentials": "Email kana password isiri chaiyo"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Mauya kuMamaCare",
+    "subtitle": "Rwendo rwako rweutano hwaamai runotanga pano"
+  },
+  "settings": {
+    "title": "Masettings",
+    "language": "Mutauro",
+    "selectLanguage": "Sarudza Mutauro",
+    "preferences": "Zvavanoda",
+    "notifications": "Mashoko",
+    "security": "Chengetedzo & Privacy",
+    "pinCode": "PIN Code",
+    "privacy": "Privacy Settings",
+    "support": "Rubatsiro",
+    "help": "Rubatsiro & Support",
+    "contact": "Batana Nesu",
+    "about": "Nezve MamaCare",
+    "logout": "Buda",
+    "close": "Vhara",
+    "change": "Chinja"
+  }
+}

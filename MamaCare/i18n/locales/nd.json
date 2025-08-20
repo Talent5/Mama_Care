@@ -1,0 +1,79 @@
+{
+  "welcome": {
+    "title": "Siyakwamukela ku MamaCare Zimbabwe",
+    "subtitle": "Umngane wakho wokwethemba ngempilo yabesimame",
+    "description": "Thola izeluleko zeziGcephane, landela uhambo lwakho lokukhulelwa, futhi xhumana noochwepheshe bezempilo - konke ngolimi olukhetha lo.",
+    "registerButton": "Bhalisa Njengomusha",
+    "loginButton": "Ngena",
+    "getStarted": "Qalisa"
+  },
+  "language": {
+    "title": "Khetha Ulimi Lwakho",
+    "subtitle": "Khetha ulimi olufunayo ukuze uqhubeke",
+    "english": "IsiNgisi",
+    "shona": "ChiShona",
+    "ndebele": "IsiNdebele",
+    "continue": "Qhubeka"
+  },
+  "register": {
+    "title": "Yakha i-Account Yakho",
+    "subtitle": "Joyina iMamaCare Zimbabwe namhlanje",
+    "firstName": "Ibizo Lokuqala",
+    "firstNamePlaceholder": "Faka ibizo lakho lokuqala",
+    "lastName": "Ibizo Lomndeni",
+    "lastNamePlaceholder": "Faka ibizo lomndeni wakho",
+    "email": "I-Email Address",
+    "emailPlaceholder": "Faka i-email address yakho",
+    "phoneNumber": "Inombolo Yocingo",
+    "phoneNumberPlaceholder": "Faka inombolo yakho yocingo",
+    "password": "Yakha i-Password",
+    "passwordPlaceholder": "Yakha i-password eqinile",
+    "confirmPassword": "Qinisekisa i-Password",
+    "confirmPasswordPlaceholder": "Qinisekisa i-password yakho",
+    "registerButton": "Yakha i-Account",
+    "alreadyHaveAccount": "Usele unayo i-account?",
+    "loginLink": "Ngena",
+    "errors": {
+      "fillAllFields": "Sicela ugcwalise wonke amasimu",
+      "passwordMismatch": "Ama-password awafani",
+      "emailExists": "I-email address isivele ibhalisiwe"
+    }
+  },
+  "login": {
+    "title": "Sawubona Futhi",
+    "subtitle": "Ngena kwi-account yakho ye-MamaCare",
+    "email": "I-Email Address",
+    "emailPlaceholder": "Faka i-email address yakho",
+    "password": "I-Password",
+    "passwordPlaceholder": "Faka i-password yakho",
+    "loginButton": "Ngena",
+    "noAccount": "Awunayo i-account?",
+    "registerLink": "Bhalisa",
+    "errors": {
+      "fillAllFields": "Sicela ugcwalise wonke amasimu",
+      "invalidCredentials": "I-email noma i-password akusilo"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Sawubona ku-MamaCare",
+    "subtitle": "Uhambo lwakho lwempilo yabesimame luqalisa lapha"
+  },
+  "settings": {
+    "title": "Amasethingi",
+    "language": "Ulimi",
+    "selectLanguage": "Khetha Ulimi",
+    "preferences": "Okuthandwayo",
+    "notifications": "Izaziso",
+    "security": "Ukuphepha & Privacy",
+    "pinCode": "I-PIN Code",
+    "privacy": "Amasethingi e-Privacy",
+    "support": "Usizo",
+    "help": "Usizo & Support",
+    "contact": "Sithumele",
+    "about": "Nge-MamaCare",
+    "logout": "Phuma",
+    "close": "Vala",
+    "change": "Shintsha"
+  }
+}
