@@ -78,32 +78,86 @@ app.get('/api/health', (req, res) => {
 
 // Apply CORS middleware with production configuration
 const corsOrigins = process.env.NODE_ENV === 'production' 
-  ? (process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['https://yourdomain.com'])
+  ? (process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : ['https://yourdomain.com'])
   : true; // Allow all origins in development
 
+// Custom CORS origin function for more flexible matching
+const corsOriginFunction = (origin, callback) => {
+  // Allow requests with no origin (like mobile apps, Expo Go, etc.)
+  if (!origin) return callback(null, true);
+  
+  // In development, allow all origins
+  if (process.env.NODE_ENV !== 'production') {
+    return callback(null, true);
+  }
+  
+  // Check if origin is in explicitly allowed origins
+  if (corsOrigins.includes(origin)) {
+    return callback(null, true);
+  }
+  
+  // Allow Vercel preview deployments for your project
+  if (origin.includes('talent5s-projects.vercel.app') || 
+      (origin.includes('mama-care') && origin.includes('vercel.app'))) {
+    return callback(null, true);
+  }
+  
+  // Allow localhost and local development IPs (for mobile apps)
+  if (origin.includes('localhost') || 
+      origin.includes('127.0.0.1') || 
+      origin.includes('10.0.2.2') ||
+      /^https?:\/\/192\.168\.\d+\.\d+/.test(origin) ||
+      /^https?:\/\/10\.\d+\.\d+\.\d+/.test(origin) ||
+      /^https?:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+/.test(origin)) {
+    return callback(null, true);
+  }
+  
+  // Allow Expo development servers and mobile app origins
+  if (origin.includes('expo.dev') || 
+      origin.includes('exp.host') ||
+      origin.startsWith('exp://') ||
+      origin.startsWith('exps://')) {
+    return callback(null, true);
+  }
+  
+  console.log(`🚫 [CORS] Blocked origin: ${origin}`);
+  callback(new Error('Not allowed by CORS'));
+};
+
 app.use(cors({
-  origin: corsOrigins,
+  origin: corsOriginFunction,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  exposedHeaders: ['X-Total-Count', 'X-Page-Count']
+  exposedHeaders: ['X-Total-Count', 'X-Page-Count'],
+  preflightContinue: false,
+  optionsSuccessStatus: 200
 }));
 
-// Additional CORS headers middleware for development only
-if (process.env.NODE_ENV !== 'production') {
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    
-    if (req.method === 'OPTIONS') {
-      res.sendStatus(200);
-      return;
-    }
-    next();
-  });
-}
+// Additional CORS headers middleware for all environments (more permissive for mobile apps)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // Log CORS requests for debugging
+  if (origin) {
+    console.log(`🌐 [CORS] Request from origin: ${origin}`);
+  }
+  
+  // Set additional headers for better compatibility
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400'); // 24 hours
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    console.log(`✅ [CORS] Preflight request handled for ${origin}`);
+    res.sendStatus(200);
+    return;
+  }
+  
+  next();
+});
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
