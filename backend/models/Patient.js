@@ -4,7 +4,8 @@ const PatientSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
+    unique: true  // Each user can only have one patient profile
   },
   dateOfBirth: {
     type: Date,
@@ -159,8 +160,8 @@ const PatientSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for search optimization
-PatientSchema.index({ 'user': 1 });
+// Index for search optimization - user index removed as unique: true already creates it
+// PatientSchema.index({ 'user': 1 }); // Redundant with unique: true above
 PatientSchema.index({ facility: 1, status: 1 });
 PatientSchema.index({ createdAt: -1 });
 PatientSchema.index({ 'currentPregnancy.riskLevel': 1 });

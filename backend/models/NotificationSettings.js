@@ -105,8 +105,8 @@ const NotificationSettingsSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for fast user lookups
-NotificationSettingsSchema.index({ user: 1 });
+// Index for fast user lookups - removed duplicate since unique: true already creates index
+// NotificationSettingsSchema.index({ user: 1 }); // This is redundant with unique: true above
 
 // Method to get effective notification settings for a specific time
 NotificationSettingsSchema.methods.getEffectiveSettings = function(currentTime) {

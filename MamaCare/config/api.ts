@@ -35,7 +35,7 @@ const getApiBaseUrl = () => {
   if (envUrl) return envUrl.replace(/\/?$/, '');
 
   if (!__DEV__) {
-    return 'https://your-production-api.com/api';
+    return 'https://mama-care-g7y1.onrender.com/api';
   }
 
   const detectedIp = detectDevHostIp();
