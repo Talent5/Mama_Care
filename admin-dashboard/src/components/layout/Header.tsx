@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Bell, 
   Globe, 
@@ -40,15 +40,10 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, sidebarOpen }) => {
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
 
-  // Load notifications on component mount
-  useEffect(() => {
-    loadNotifications();
-    const interval = setInterval(loadNotifications, 60000); // Refresh every minute
-    return () => clearInterval(interval);
-  }, []);
-
   // Load notifications from API
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
+    if (isLoadingNotifications) return; // Prevent concurrent requests
+    
     setIsLoadingNotifications(true);
     try {
       const [notificationData, stats] = await Promise.all([
@@ -60,10 +55,36 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, sidebarOpen }) => {
       setNotificationStats(stats);
     } catch (error) {
       console.error('Failed to load notifications:', error);
+      // Don't show error to user for background refresh failures
     } finally {
       setIsLoadingNotifications(false);
     }
-  };
+  }, [isLoadingNotifications]);
+
+  // Load notifications on component mount
+  useEffect(() => {
+    let isMounted = true;
+    
+    const initNotifications = async () => {
+      if (isMounted) {
+        await loadNotifications();
+      }
+    };
+    
+    initNotifications();
+    
+    // Refresh every 5 minutes instead of every minute to reduce load
+    const interval = setInterval(() => {
+      if (isMounted) {
+        loadNotifications();
+      }
+    }, 300000);
+    
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [loadNotifications]);
 
   // Handle notification click
   const handleNotificationClick = async (notification: NotificationData) => {

@@ -26,6 +26,15 @@ const SettingsPanel: React.FC = () => {
 
   useEffect(() => {
     const loadTabData = async (tab: string) => {
+      // Check if data already exists to avoid unnecessary requests
+      const shouldLoad = (
+        (tab === 'profile' && !profileData) ||
+        (tab === 'notifications' && !notificationSettings) ||
+        (tab === 'system' && !systemSettings)
+      );
+
+      if (!shouldLoad) return;
+
       setLoading(true);
       try {
         switch (tab) {
@@ -53,12 +62,13 @@ const SettingsPanel: React.FC = () => {
         }
       } catch (error) {
         console.error('Error loading settings for tab:', tab, error);
+        showToast('Failed to load settings data', 'error');
       }
       setLoading(false);
     };
 
     loadTabData(activeTab);
-  }, [activeTab]); // Only activeTab as dependency
+  }, [activeTab, profileData, notificationSettings, systemSettings, showToast]); // Add data dependencies to prevent unnecessary loads
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();

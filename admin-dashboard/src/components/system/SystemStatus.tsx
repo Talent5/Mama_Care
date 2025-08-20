@@ -141,10 +141,27 @@ const SystemStatus: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchSystemStatus();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchSystemStatus, 30000);
-    return () => clearInterval(interval);
+    let isMounted = true;
+
+    const initData = async () => {
+      if (isMounted) {
+        await fetchSystemStatus();
+      }
+    };
+
+    initData();
+    
+    // Refresh every 2 minutes instead of 30 seconds to reduce load
+    const interval = setInterval(() => {
+      if (isMounted) {
+        fetchSystemStatus();
+      }
+    }, 120000);
+    
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const getStatusIcon = (status: string) => {

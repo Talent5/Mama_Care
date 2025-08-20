@@ -38,7 +38,11 @@ const AdminControlPanel: React.FC<AdminControlPanelProps> = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchData = async () => {
+      if (!isMounted) return;
+      
       try {
         setLoading(true);
         
@@ -48,23 +52,38 @@ const AdminControlPanel: React.FC<AdminControlPanelProps> = () => {
           adminAPI.getDashboardStats()
         ]);
 
-        setSystemStatus(systemResponse.data);
-        if (dashboardResponse.data) {
-          setDashboardData(dashboardResponse.data);
+        if (isMounted) {
+          setSystemStatus(systemResponse.data);
+          if (dashboardResponse.data) {
+            setDashboardData(dashboardResponse.data);
+          }
+          setError(null);
         }
-        setError(null);
       } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-        setError('Failed to fetch dashboard data');
+        if (isMounted) {
+          console.error('Error fetching dashboard data:', err);
+          setError('Failed to fetch dashboard data');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchData();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
+    
+    // Refresh every 5 minutes instead of 30 seconds to reduce load
+    const interval = setInterval(() => {
+      if (isMounted) {
+        fetchData();
+      }
+    }, 300000);
+    
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const adminModules = [
