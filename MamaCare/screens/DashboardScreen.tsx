@@ -17,9 +17,10 @@ import AppointmentsScreen from './AppointmentsScreen';
 import SymptomLoggingScreen from './SymptomLoggingScreen';
 import ExerciseScreen from './ExerciseScreen';
 import HealthTipsScreen from './HealthTipsScreen';
-import { AuthStorage as DatabaseAuthStorage, StoredUser } from '../utils/databaseAuthStorage';
-import { dashboardService, DashboardData } from '../services';
-import { authService } from '../services';
+import Logo from '../components/Logo';
+import { StoredUser } from '../utils/databaseAuthStorage';
+import { convertToStoredUser, isUserAuthenticated } from '../utils/userUtils';
+import { dashboardService, authService, DashboardData } from '../services';
 import { getPersonalizedGreeting } from '../utils/greetingUtils';
 
 interface DashboardScreenProps {
@@ -49,6 +50,7 @@ function DashboardScreen({ onLogout }: DashboardScreenProps) {
 
   useEffect(() => {
     initializePersonalizedDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const initializePersonalizedDashboard = async () => {
@@ -56,61 +58,28 @@ function DashboardScreen({ onLogout }: DashboardScreenProps) {
       setIsLoading(true);
       console.log('🔄 Initializing personalized dashboard...');
 
-      // First, verify authentication
-      const isLoggedIn = await authService.isLoggedIn();
-      console.log('🔐 Authentication status:', isLoggedIn);
-      
-      if (!isLoggedIn) {
+      // Simple authentication check using utility
+      if (!isUserAuthenticated()) {
         console.warn('❌ User not authenticated, redirecting to login');
         onLogout();
         return;
       }
 
-      // Load user data with enhanced error handling
-      let currentUser: StoredUser | null = null;
+      // Get user data from auth service and convert to StoredUser format
+      const authUser = authService.getUser();
+      const currentUser = convertToStoredUser(authUser);
       
-      try {
-        // Try to get from auth service first
-        const authUserResponse = await authService.getCurrentUser();
-        if (authUserResponse.success && authUserResponse.data?.user) {
-          const authUser = authUserResponse.data.user;
-          console.log('✅ Loaded user from auth service:', authUser.email);
-          
-          // Convert to StoredUser format
-          currentUser = {
-            _id: authUser.id,
-            firstName: authUser.firstName,
-            lastName: authUser.lastName,
-            email: authUser.email,
-            phone: authUser.phone,
-            role: authUser.role,
-            isActive: true,
-            createdAt: new Date().toISOString(),
-          };
-        } else {
-          throw new Error('Auth service returned invalid user data');
-        }
-      } catch (authError) {
-        console.warn('⚠️ Auth service failed, trying database storage:', authError);
-        
-        // Fallback to database storage
-        try {
-          currentUser = await DatabaseAuthStorage.getCurrentUser();
-          if (currentUser) {
-            console.log('✅ Loaded user from database storage:', currentUser.email);
-          } else {
-            throw new Error('No user data in database storage');
-          }
-        } catch (dbError) {
-          console.error('❌ Both auth methods failed:', dbError);
-          Alert.alert(
-            'Authentication Error',
-            'Unable to load your profile. Please login again.',
-            [{ text: 'OK', onPress: onLogout }]
-          );
-          return;
-        }
+      if (!currentUser) {
+        console.error('❌ No user data available');
+        Alert.alert(
+          'Error',
+          'Unable to load your profile. Please login again.',
+          [{ text: 'OK', onPress: onLogout }]
+        );
+        return;
       }
+
+      console.log('✅ Using user from auth service:', currentUser.email);
 
       // Update personalized data
       setPersonalizedData({
@@ -223,10 +192,14 @@ function DashboardScreen({ onLogout }: DashboardScreenProps) {
         nextCheckup: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)).toISOString()
       },
       nextAppointment: {
+        id: '1',
         title: 'Routine Checkup',
         date: 'Tomorrow',
         time: '10:00 AM',
-        doctor: 'Dr. Sarah Johnson'
+        doctor: 'Dr. Sarah Johnson',
+        location: 'Harare Central Hospital',
+        duration: '1 hour',
+        type: 'checkup'
       },
       recentActivity: [
         { 
@@ -421,7 +394,7 @@ function DashboardScreen({ onLogout }: DashboardScreenProps) {
     return (
       <View style={styles.container}>
         <View style={styles.centerContent}>
-          <Text style={styles.loadingIcon}>🤰</Text>
+          <Logo size={60} style={styles.loadingLogo} />
           <Text style={styles.loadingText}>Loading your MamaCare...</Text>
         </View>
       </View>
@@ -548,7 +521,7 @@ function DashboardScreen({ onLogout }: DashboardScreenProps) {
                     <Text style={styles.wellnessActionText}>Health Resources</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.wellnessActionButton} activeOpacity={0.8}>
-                    <Text style={styles.wellnessActionIcon}>🤰</Text>
+                    <Logo size={20} />
                     <Text style={styles.wellnessActionText}>Planning Pregnancy</Text>
                   </TouchableOpacity>
                 </View>
@@ -888,8 +861,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingIcon: {
-    fontSize: 48,
+  loadingLogo: {
     marginBottom: 20,
   },
   loadingText: {

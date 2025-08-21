@@ -32,36 +32,21 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
       try {
         setAuthState(prev => ({ ...prev, isChecking: true, error: null }));
         
-        // Verify authentication status
-        const isLoggedIn = await authService.isLoggedIn();
+        // Simple authentication check - just verify we have a token and user
+        const isAuthenticated = authService.isAuthenticated();
+        const user = authService.getUser();
+        const token = authService.getToken();
         
         if (!isMounted) return;
         
-        if (isLoggedIn) {
-          // Double-check with current user
-          try {
-            const userResponse = await authService.getCurrentUser();
-            if (userResponse.success && userResponse.data?.user) {
-              setAuthState({
-                isChecking: false,
-                isAuthenticated: true,
-                error: null
-              });
-            } else {
-              throw new Error('Invalid user session');
-            }
-          } catch (userError) {
-            console.error('[AuthGuard] User validation failed:', userError);
-            // Force complete logout on user verification failure
-            await authService.forceCompleteLogout();
-            setAuthState({
-              isChecking: false,
-              isAuthenticated: false,
-              error: 'Session expired'
-            });
-            onAuthFailure();
-          }
+        if (isAuthenticated && user && token) {
+          setAuthState({
+            isChecking: false,
+            isAuthenticated: true,
+            error: null
+          });
         } else {
+          console.log('[AuthGuard] Authentication check failed - missing token or user');
           setAuthState({
             isChecking: false,
             isAuthenticated: false,
@@ -72,8 +57,6 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
       } catch (error) {
         console.error('[AuthGuard] Authentication check failed:', error);
         if (isMounted) {
-          // Force complete logout on any authentication error
-          await authService.forceCompleteLogout();
           setAuthState({
             isChecking: false,
             isAuthenticated: false,
@@ -84,15 +67,11 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
       }
     };
 
-    // Initial check
+    // Initial check only - no periodic checks
     checkAuthentication();
-
-    // Set up periodic authentication checks (every 5 minutes)
-    const authCheckInterval = setInterval(checkAuthentication, 5 * 60 * 1000);
 
     return () => {
       isMounted = false;
-      clearInterval(authCheckInterval);
     };
   }, [onAuthFailure]);
 

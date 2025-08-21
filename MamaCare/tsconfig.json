@@ -5,9 +5,10 @@
     "jsx": "react-jsx",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-  "moduleResolution": "node",
-  "module": "esnext",
+    "moduleResolution": "node",
+    "module": "esnext",
     "resolveJsonModule": true,
+    "skipLibCheck": true,
     "paths": {
       "@/*": [
         "./*"

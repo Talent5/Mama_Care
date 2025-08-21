@@ -2,9 +2,9 @@
   "expo": {
     "name": "MamaCare",
     "slug": "MamaCare",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/Logo.png",
     "scheme": "mamacare",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -14,33 +14,33 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/images/Logo.png",
+        "backgroundColor": "#e9f8e7"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.boikeys5.mamacare",
-      "versionCode": 2
+      "versionCode": 3
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/Logo.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/Logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#e9f8e7"
         }
       ],
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/notification-icon.png",
+          "icon": "./assets/images/Logo.png",
           "color": "#ffffff",
           "defaultChannel": "default"
         }

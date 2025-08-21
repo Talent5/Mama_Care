@@ -10,13 +10,16 @@ web-build/
 expo-env.d.ts
 
 # Native
-.kotlin/
 *.orig.*
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
+
+# Native project folders (using CNG/Prebuild)
+/android
+/ios
 
 # Metro
 .metro-health-check*

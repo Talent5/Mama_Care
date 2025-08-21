@@ -20,6 +20,9 @@ import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import WelcomeScreen from './screens/WelcomeScreen';
 
+// Import components
+import Logo from './components/Logo';
+
 // Import utilities
 import { authService } from './services';
 import { notificationService } from './services/NotificationService';
@@ -211,7 +214,7 @@ export default function App() {
       <SafeAreaProvider>
         <View style={styles.loadingContainer} pointerEvents="auto">
           <StatusBar style="auto" />
-          <Text style={styles.loadingIcon}>🤰</Text>
+          <Logo size={80} style={styles.loadingLogo} />
           <Text style={styles.loadingText}>MamaCare</Text>
           <Text style={styles.loadingSubtext}>Loading...</Text>
           {/* Immediate skip option for better UX */}
@@ -316,8 +319,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingIcon: {
-    fontSize: 48,
+  loadingLogo: {
     marginBottom: 20,
   },
   loadingText: {

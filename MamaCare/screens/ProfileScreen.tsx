@@ -21,6 +21,8 @@ import PersonalInfoEditor from '../components/PersonalInfoEditor';
 import MedicalRecordsManager from '../components/MedicalRecordsManager';
 import AccountSettings from '../components/AccountSettings';
 import { AuthStorage, MedicalRecord, StoredUser } from '../utils/databaseAuthStorage';
+import { authService } from '../services';
+import { convertToStoredUser } from '../utils/userUtils';
 import PINLockScreen from './PINLockScreen';
 
 const { width } = Dimensions.get('window');
@@ -88,10 +90,21 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onLogout }) => {
   const loadMedicalRecords = async () => {
     try {
       setIsLoading(true);
-      let records = await AuthStorage.getMedicalRecords();
-      const user = await AuthStorage.getCurrentUser();
       
-      setCurrentUser(user);
+      // Get user from auth service (in memory, faster)
+      const authUser = authService.getUser();
+      const user = convertToStoredUser(authUser);
+      
+      if (!user) {
+        // Fallback to database storage if auth service doesn't have user
+        const dbUser = await AuthStorage.getCurrentUser();
+        setCurrentUser(dbUser);
+      } else {
+        setCurrentUser(user);
+      }
+      
+      // Load medical records
+      let records = await AuthStorage.getMedicalRecords();
       
       // Add dummy data if no records exist
       if (records.length === 0) {
@@ -327,7 +340,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onLogout }) => {
         </head>
         <body>
           <div class="header">
-            <div class="logo">🤱 MamaCare Zimbabwe</div>
+            <div class="logo">MamaCare Zimbabwe</div>
             <h1>Medical Records</h1>
             <p>Generated on ${new Date().toLocaleDateString('en-GB')}</p>
           </div>

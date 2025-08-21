@@ -205,6 +205,27 @@ class AuthService {
     }
   }
 
+  // Get current user data (refresh from server if needed)
+  async refreshUserData(): Promise<ApiResponse<{ user: User }>> {
+    try {
+      if (!this.token) {
+        throw new Error('No authentication token');
+      }
+      
+      const response = await apiClient.get<{ user: User }>('/auth/me');
+      
+      if (response.success && response.data) {
+        this.user = response.data.user;
+        await AsyncStorage.setItem('user_data', JSON.stringify(this.user));
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+      throw error;
+    }
+  }
+
   async getCurrentUser(): Promise<ApiResponse<{ user: User }>> {
     try {
       if (!this.token) {
@@ -475,14 +496,10 @@ class AuthService {
     }
   }
 
-  // Legacy compatibility methods - now includes token validation
+  // Legacy compatibility methods - simplified version
   async isLoggedIn(): Promise<boolean> {
-    if (!this.isAuthenticated()) {
-      return false;
-    }
-    
-    // Validate token with server
-    return await this.validateToken();
+    // Simple check - just verify we have token and user in memory
+    return this.isAuthenticated();
   }
 
   // Test method to manually trigger authentication failure (for testing)
