@@ -82,57 +82,143 @@ app.get('/api/health', (req, res) => {
 });
 
 // Apply CORS middleware with production configuration
-const corsOrigins = process.env.NODE_ENV === 'production' 
-  ? (process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : ['https://yourdomain.com'])
-  : true; // Allow all origins in development
+const allowedOrigins = [
+  'https://mama-care-2m7mq1hws-talent5s-projects.vercel.app', // Your current Vercel frontend
+  'https://mama-care.vercel.app', // Potential production domain
+  'http://localhost:3000', // React dev server
+  'http://localhost:3001', // Alternative React port
+  'http://localhost:5173', // Vite dev server
+  'https://localhost:5173', // Vite dev server (HTTPS)
+  'http://localhost:8081', // Expo dev server
+  'http://127.0.0.1:3000', // Localhost alternative
+  'http://127.0.0.1:5173', // Localhost alternative for Vite
+  'http://127.0.0.1:8081', // Localhost alternative for Expo
+  'http://192.168.0.49:3000', // Local network access
+  'http://192.168.0.49:5173', // Local network access for Vite
+  'http://192.168.0.49:8081', // Local network access for Expo
+  'http://10.0.2.2:5173', // Android emulator
+  'http://10.0.2.2:3000', // Android emulator
+  'https://yourdomain.com' // Placeholder for your custom domain
+];
 
-// Simplified CORS configuration - more permissive for troubleshooting
+// Add environment variable origins if available
+if (process.env.CORS_ORIGINS) {
+  allowedOrigins.push(...process.env.CORS_ORIGINS.split(','));
+}
+
 const corsOriginFunction = (origin, callback) => {
+  console.log(`🌐 [CORS] Request from origin: ${origin || 'no-origin'}`);
+  
   // Allow requests with no origin (like mobile apps, Postman, etc.)
   if (!origin) {
     console.log(`✅ [CORS] Allowing request with no origin`);
     return callback(null, true);
   }
   
-  console.log(`✅ [CORS] Allowing origin: ${origin} (rate limiting disabled for troubleshooting)`);
-  return callback(null, true);
+  // Check if origin is in allowed list
+  if (allowedOrigins.includes(origin)) {
+    console.log(`✅ [CORS] Allowing origin: ${origin}`);
+    return callback(null, true);
+  }
   
-  // TODO: Re-enable strict CORS checking after login issues are resolved
+  // In development, allow all localhost and local network origins
+  if (process.env.NODE_ENV !== 'production') {
+    // Allow any localhost with any port
+    if (origin.startsWith('http://localhost:') || origin.startsWith('https://localhost:') ||
+        origin.startsWith('http://127.0.0.1:') || origin.startsWith('https://127.0.0.1:')) {
+      console.log(`✅ [CORS] Allowing localhost origin in development: ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Allow local network IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+    const localNetworkRegex = /^https?:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.).+/;
+    if (localNetworkRegex.test(origin)) {
+      console.log(`✅ [CORS] Allowing local network origin in development: ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Allow Expo development URLs
+    if (origin.includes('exp://') || origin.includes('expo://')) {
+      console.log(`✅ [CORS] Allowing Expo origin in development: ${origin}`);
+      return callback(null, true);
+    }
+  }
+  
+  console.log(`❌ [CORS] Rejecting origin: ${origin}`);
+  callback(new Error('Not allowed by CORS'), false);
 };
 
 app.use(cors({
   origin: corsOriginFunction,
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With', 
+    'Accept', 
+    'Origin',
+    'Cache-Control',
+    'Pragma'
+  ],
   exposedHeaders: ['X-Total-Count', 'X-Page-Count'],
   preflightContinue: false,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 204
 }));
 
-// Simplified CORS headers middleware - very permissive for troubleshooting
+// Additional CORS headers middleware for extra compatibility
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   
   // Log all requests for debugging
-  console.log(`🌐 [CORS] ${req.method} request from origin: ${origin || 'no-origin'} to ${req.path}`);
+  console.log(`🌐 [REQUEST] ${req.method} ${req.path} from origin: ${origin || 'no-origin'}`);
   
-  // Set permissive CORS headers for all requests
+  // Check if origin should be allowed
+  let allowOrigin = false;
+  
   if (origin) {
+    // Check against allowed origins list
+    if (allowedOrigins.includes(origin)) {
+      allowOrigin = true;
+    }
+    // In development, allow localhost and local network origins
+    else if (process.env.NODE_ENV !== 'production') {
+      if (origin.startsWith('http://localhost:') || origin.startsWith('https://localhost:') ||
+          origin.startsWith('http://127.0.0.1:') || origin.startsWith('https://127.0.0.1:')) {
+        allowOrigin = true;
+      }
+      
+      // Allow local network IPs
+      const localNetworkRegex = /^https?:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.).+/;
+      if (localNetworkRegex.test(origin)) {
+        allowOrigin = true;
+      }
+      
+      // Allow Expo development URLs
+      if (origin.includes('exp://') || origin.includes('expo://')) {
+        allowOrigin = true;
+      }
+    }
+  }
+  
+  // Set CORS headers based on origin check
+  if (allowOrigin && origin) {
     res.header('Access-Control-Allow-Origin', origin);
-  } else {
+  } else if (!origin) {
+    // For requests without origin (mobile apps, etc.)
     res.header('Access-Control-Allow-Origin', '*');
   }
   
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+  // Set other CORS headers
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS,HEAD');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma');
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Max-Age', '86400');
   
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
-    console.log(`✅ [CORS] Preflight request handled for ${origin || 'no-origin'}`);
-    res.status(200).end();
+    console.log(`✅ [PREFLIGHT] Handled for ${origin || 'no-origin'} to ${req.path}`);
+    res.status(204).end();
     return;
   }
   
