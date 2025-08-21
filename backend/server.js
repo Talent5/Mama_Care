@@ -87,18 +87,23 @@ const allowedOrigins = [
   'https://mama-care-talent5s-projects.vercel.app', // Your current Vercel frontend (updated)
   'https://mama-care-git-master-talent5s-projects.vercel.app', // Git branch deployment
   'https://mama-care-p2miylqnd-talent5s-projects.vercel.app', // Alternative deployment
+  'mama-care-hfwa-git-master-talent5s-projects.vercel.app',
+  'mama-care-hfwa-3ts22ys1n-talent5s-projects.vercel.app',
   'https://mama-care-hfwa.vercel.app',
   'https://mama-care.vercel.app', // Potential production domain
   'http://localhost:3000', // React dev server
   'http://localhost:3001', // Alternative React port
-  'http://localhost:5173', // Vite dev server
+  'http://localhost:4173', // Vite preview server
+  'http://localhost:5173', // Vite dev server (admin dashboard)
   'https://localhost:5173', // Vite dev server (HTTPS)
   'http://localhost:8081', // Expo dev server
   'http://127.0.0.1:3000', // Localhost alternative
-  'http://127.0.0.1:5173', // Localhost alternative for Vite
+  'http://127.0.0.1:4173', // Localhost alternative for Vite preview
+  'http://127.0.0.1:5173', // Localhost alternative for Vite (admin dashboard)
   'http://127.0.0.1:8081', // Localhost alternative for Expo
   'http://192.168.0.49:3000', // Local network access
-  'http://192.168.0.49:5173', // Local network access for Vite
+  'http://192.168.0.49:4173', // Local network access for Vite preview
+  'http://192.168.0.49:5173', // Local network access for Vite (admin dashboard)
   'http://192.168.0.49:8081', // Local network access for Expo
   'http://10.0.2.2:5173', // Android emulator
   'http://10.0.2.2:3000', // Android emulator
@@ -125,27 +130,36 @@ const corsOriginFunction = (origin, callback) => {
     return callback(null, true);
   }
   
-  // In development, allow all localhost and local network origins
-  if (process.env.NODE_ENV !== 'production') {
-    // Allow any localhost with any port
-    if (origin.startsWith('http://localhost:') || origin.startsWith('https://localhost:') ||
-        origin.startsWith('http://127.0.0.1:') || origin.startsWith('https://127.0.0.1:')) {
-      console.log(`✅ [CORS] Allowing localhost origin in development: ${origin}`);
-      return callback(null, true);
-    }
-    
-    // Allow local network IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
-    const localNetworkRegex = /^https?:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.).+/;
-    if (localNetworkRegex.test(origin)) {
-      console.log(`✅ [CORS] Allowing local network origin in development: ${origin}`);
-      return callback(null, true);
-    }
-    
-    // Allow Expo development URLs
-    if (origin.includes('exp://') || origin.includes('expo://')) {
-      console.log(`✅ [CORS] Allowing Expo origin in development: ${origin}`);
-      return callback(null, true);
-    }
+  // In production, still allow localhost origins for admin dashboard
+  if (origin.startsWith('http://localhost:') || origin.startsWith('https://localhost:') ||
+      origin.startsWith('http://127.0.0.1:') || origin.startsWith('https://127.0.0.1:')) {
+    console.log(`✅ [CORS] Allowing localhost origin: ${origin}`);
+    return callback(null, true);
+  }
+  
+  // Allow local network IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+  const localNetworkRegex = /^https?:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.).+/;
+  if (localNetworkRegex.test(origin)) {
+    console.log(`✅ [CORS] Allowing local network origin: ${origin}`);
+    return callback(null, true);
+  }
+  
+  // Allow Expo development URLs
+  if (origin.includes('exp://') || origin.includes('expo://')) {
+    console.log(`✅ [CORS] Allowing Expo origin: ${origin}`);
+    return callback(null, true);
+  }
+  
+  // Allow Vercel preview deployments (format: https://app-name-hash.vercel.app)
+  if (origin.includes('vercel.app')) {
+    console.log(`✅ [CORS] Allowing Vercel deployment: ${origin}`);
+    return callback(null, true);
+  }
+  
+  // Allow Netlify preview deployments
+  if (origin.includes('netlify.app')) {
+    console.log(`✅ [CORS] Allowing Netlify deployment: ${origin}`);
+    return callback(null, true);
   }
   
   console.log(`❌ [CORS] Rejecting origin: ${origin}`);
@@ -185,23 +199,25 @@ app.use((req, res, next) => {
     if (allowedOrigins.includes(origin)) {
       allowOrigin = true;
     }
-    // In development, allow localhost and local network origins
-    else if (process.env.NODE_ENV !== 'production') {
-      if (origin.startsWith('http://localhost:') || origin.startsWith('https://localhost:') ||
-          origin.startsWith('http://127.0.0.1:') || origin.startsWith('https://127.0.0.1:')) {
-        allowOrigin = true;
-      }
-      
-      // Allow local network IPs
+    // Allow localhost and local network origins (for admin dashboard)
+    else if (origin.startsWith('http://localhost:') || origin.startsWith('https://localhost:') ||
+             origin.startsWith('http://127.0.0.1:') || origin.startsWith('https://127.0.0.1:')) {
+      allowOrigin = true;
+    }
+    // Allow local network IPs
+    else {
       const localNetworkRegex = /^https?:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.).+/;
       if (localNetworkRegex.test(origin)) {
         allowOrigin = true;
       }
-      
-      // Allow Expo development URLs
-      if (origin.includes('exp://') || origin.includes('expo://')) {
-        allowOrigin = true;
-      }
+    }
+    // Allow Expo development URLs
+    if (origin.includes('exp://') || origin.includes('expo://')) {
+      allowOrigin = true;
+    }
+    // Allow Vercel and Netlify deployments
+    if (origin.includes('vercel.app') || origin.includes('netlify.app')) {
+      allowOrigin = true;
     }
   }
   
