@@ -84,7 +84,9 @@ app.get('/api/health', (req, res) => {
 // Apply CORS middleware with production configuration
 const allowedOrigins = [
   'https://mama-care-2m7mq1hws-talent5s-projects.vercel.app', // Your current Vercel frontend
-  'https://mama-care.vercel.app', // Potential production domain
+  'https://mama-care-git-master-talent5s-projects.vercel.app/',
+  'https://mama-care-talent5s-projects.vercel.app/',
+  'https://mama-care-p2miylqnd-talent5s-projects.vercel.app/', // Potential production domain
   'http://localhost:3000', // React dev server
   'http://localhost:3001', // Alternative React port
   'http://localhost:5173', // Vite dev server
