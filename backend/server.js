@@ -84,6 +84,7 @@ app.get('/api/health', (req, res) => {
 // Apply CORS middleware with production configuration
 const allowedOrigins = [
   'https://mama-care-2m7mq1hws-talent5s-projects.vercel.app', // Your current Vercel frontend
+  'https://mama-care-three.vercel.app/',
   'https://mama-care-talent5s-projects.vercel.app', // Your current Vercel frontend (updated)
   'https://mama-care-git-master-talent5s-projects.vercel.app', // Git branch deployment
   'https://mama-care-p2miylqnd-talent5s-projects.vercel.app', // Alternative deployment
