@@ -19,7 +19,7 @@ export const loginAsSystemAdmin = async (): Promise<AuthResponse | null> => {
   try {
     const API_BASE_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000/api';
     
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

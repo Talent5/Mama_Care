@@ -93,7 +93,7 @@ const AppUsersManagement: React.FC = () => {
 
       console.log('Loading app users with params:', params.toString());
 
-      const response = await fetch(`${API_BASE_URL}/patients/assignment/all-app-users?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/api/patients/assignment/all-app-users?${params}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
           'Content-Type': 'application/json'
@@ -134,7 +134,7 @@ const AppUsersManagement: React.FC = () => {
 
   const loadDoctors = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/doctors`, {
+      const response = await fetch(`${API_BASE_URL}/api/users/doctors`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
           'Content-Type': 'application/json'
@@ -195,7 +195,7 @@ const AppUsersManagement: React.FC = () => {
       setAssigningPatientId(patientId);
       console.log(`Assigning doctor ${doctorId} to patient ${patientId}`);
       
-      const response = await fetch(`${API_BASE_URL}/patients/assignment/${patientId}/assign-doctor`, {
+      const response = await fetch(`${API_BASE_URL}/api/patients/assignment/${patientId}/assign-doctor`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,

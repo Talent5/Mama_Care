@@ -15,6 +15,7 @@ import {
   MemoryStick,
   Clock
 } from 'lucide-react';
+import { API_BASE_URL } from '../../config';
 
 interface SystemManagementProps {
   className?: string;
@@ -85,14 +86,13 @@ const SystemManagement: React.FC<SystemManagementProps> = () => {
   const [backups, setBackups] = useState<BackupInfo[]>([]);
 
   // API endpoints - replace with your actual backend URLs
-  const API_BASE_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000/api';
   
   const apiEndpoints = {
-    systemStatus: `${API_BASE_URL}/admin/system/status`,
-    servers: `${API_BASE_URL}/admin/system/servers`,
-    database: `${API_BASE_URL}/admin/system/database`,
-    backups: `${API_BASE_URL}/admin/system/backups`,
-    monitoring: `${API_BASE_URL}/admin/system/monitoring`
+    systemStatus: `${API_BASE_URL}/api/admin/system/status`,
+    servers: `${API_BASE_URL}/api/admin/system/servers`,
+    database: `${API_BASE_URL}/api/admin/system/database`,
+    backups: `${API_BASE_URL}/api/admin/system/backups`,
+    monitoring: `${API_BASE_URL}/api/admin/system/monitoring`
   };
 
   // Initialize data on component mount
