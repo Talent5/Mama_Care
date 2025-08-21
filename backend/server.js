@@ -87,6 +87,7 @@ const allowedOrigins = [
   'https://mama-care-talent5s-projects.vercel.app', // Your current Vercel frontend (updated)
   'https://mama-care-git-master-talent5s-projects.vercel.app', // Git branch deployment
   'https://mama-care-p2miylqnd-talent5s-projects.vercel.app', // Alternative deployment
+  'https://mama-care-hfwa.vercel.app',
   'https://mama-care.vercel.app', // Potential production domain
   'http://localhost:3000', // React dev server
   'http://localhost:3001', // Alternative React port
