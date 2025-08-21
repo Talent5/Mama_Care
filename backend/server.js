@@ -44,9 +44,14 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-// Rate limiting for production
+// Rate limiting temporarily disabled to troubleshoot CORS issues
+// TODO: Re-enable rate limiting after CORS issues are resolved
+console.log('⚠️  Rate limiting is currently DISABLED for troubleshooting');
+
+// Commented out rate limiting code
+/*
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
   message: {
     error: 'Too many requests from this IP, please try again later.',
@@ -56,41 +61,10 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
-// More lenient rate limiting for auth endpoints
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // Allow 20 login attempts per 15 minutes
-  message: {
-    error: 'Too many login attempts, please try again later.',
-    retryAfter: 900 // 15 minutes
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Apply rate limiting to API routes
 if (process.env.NODE_ENV === 'production') {
-  // Apply more lenient rate limiting to auth endpoints
-  app.use('/api/auth', authLimiter);
-  
-  // Apply general rate limiting to other routes
-  app.use('/api/', (req, res, next) => {
-    // Skip auth endpoints as they have their own limiter
-    if (req.path.startsWith('/auth/')) {
-      return next();
-    }
-    return limiter(req, res, next);
-  });
-} else {
-  // In development, apply very lenient rate limiting
-  const devLimiter = rateLimit({
-    windowMs: 1 * 60 * 1000, // 1 minute
-    max: 1000, // Very high limit for development
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
-  app.use('/api/', devLimiter);
+  app.use('/api/', limiter);
 }
+*/
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -112,63 +86,18 @@ const corsOrigins = process.env.NODE_ENV === 'production'
   ? (process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : ['https://yourdomain.com'])
   : true; // Allow all origins in development
 
-// Custom CORS origin function for more flexible matching
+// Simplified CORS configuration - more permissive for troubleshooting
 const corsOriginFunction = (origin, callback) => {
-  // Allow requests with no origin (like mobile apps, Expo Go, etc.)
-  if (!origin) return callback(null, true);
-  
-  // In development, allow all origins
-  if (process.env.NODE_ENV !== 'production') {
+  // Allow requests with no origin (like mobile apps, Postman, etc.)
+  if (!origin) {
+    console.log(`✅ [CORS] Allowing request with no origin`);
     return callback(null, true);
   }
   
-  // In production, be more permissive for now to fix the immediate issue
-  // You can tighten this later once everything is working
-  if (process.env.NODE_ENV === 'production') {
-    // Always allow your Render deployment domains
-    if (origin.includes('mama-care') && origin.includes('onrender.com')) {
-      return callback(null, true);
-    }
-    
-    // Allow your admin dashboard domains
-    if (origin.includes('mamacare-admin') && origin.includes('onrender.com')) {
-      return callback(null, true);
-    }
-  }
+  console.log(`✅ [CORS] Allowing origin: ${origin} (rate limiting disabled for troubleshooting)`);
+  return callback(null, true);
   
-  // Check if origin is in explicitly allowed origins
-  if (Array.isArray(corsOrigins) && corsOrigins.includes(origin)) {
-    return callback(null, true);
-  }
-  
-  // Allow Vercel preview deployments for your project
-  if (origin.includes('talent5s-projects.vercel.app') || 
-      (origin.includes('mama-care') && origin.includes('vercel.app'))) {
-    return callback(null, true);
-  }
-  
-  // Allow localhost and local development IPs (for mobile apps)
-  if (origin.includes('localhost') || 
-      origin.includes('127.0.0.1') || 
-      origin.includes('10.0.2.2') ||
-      /^https?:\/\/192\.168\.\d+\.\d+/.test(origin) ||
-      /^https?:\/\/10\.\d+\.\d+\.\d+/.test(origin) ||
-      /^https?:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+/.test(origin)) {
-    return callback(null, true);
-  }
-  
-  // Allow Expo development servers and mobile app origins
-  if (origin.includes('expo.dev') || 
-      origin.includes('exp.host') ||
-      origin.startsWith('exp://') ||
-      origin.startsWith('exps://')) {
-    return callback(null, true);
-  }
-  
-  console.log(`🚫 [CORS] Blocked origin: ${origin}`);
-  console.log(`🔍 [DEBUG] Available CORS origins:`, corsOrigins);
-  console.log(`🔍 [DEBUG] Environment:`, process.env.NODE_ENV);
-  callback(new Error('Not allowed by CORS'));
+  // TODO: Re-enable strict CORS checking after login issues are resolved
 };
 
 app.use(cors({
@@ -181,42 +110,24 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 
-// Additional CORS headers middleware for all environments (more permissive for mobile apps)
+// Simplified CORS headers middleware - very permissive for troubleshooting
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   
-  // Log CORS requests for debugging
-  if (origin) {
-    console.log(`🌐 [CORS] Request from origin: ${origin}`);
-  } else {
-    console.log(`🌐 [CORS] Request with no origin (likely mobile app)`);
-  }
+  // Log all requests for debugging
+  console.log(`🌐 [CORS] ${req.method} request from origin: ${origin || 'no-origin'} to ${req.path}`);
   
-  // Set CORS headers more explicitly for production issues
+  // Set permissive CORS headers for all requests
   if (origin) {
-    // In production, be more specific about allowed origins
-    if (process.env.NODE_ENV === 'production') {
-      if (origin.includes('mama-care') && origin.includes('onrender.com')) {
-        res.header('Access-Control-Allow-Origin', origin);
-      } else if (origin.includes('mamacare-admin') && origin.includes('onrender.com')) {
-        res.header('Access-Control-Allow-Origin', origin);
-      } else if (origin.includes('localhost')) {
-        res.header('Access-Control-Allow-Origin', origin);
-      }
-    } else {
-      // In development, allow all origins
-      res.header('Access-Control-Allow-Origin', origin);
-    }
+    res.header('Access-Control-Allow-Origin', origin);
   } else {
-    // For requests without origin (mobile apps), allow them
     res.header('Access-Control-Allow-Origin', '*');
   }
   
-  // Set additional headers for better compatibility
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma');
   res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Max-Age', '86400'); // 24 hours
+  res.header('Access-Control-Max-Age', '86400');
   
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
