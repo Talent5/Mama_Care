@@ -88,11 +88,11 @@ const SystemManagement: React.FC<SystemManagementProps> = () => {
   // API endpoints - replace with your actual backend URLs
   
   const apiEndpoints = {
-    systemStatus: `${API_BASE_URL}/api/admin/system/status`,
-    servers: `${API_BASE_URL}/api/admin/system/servers`,
-    database: `${API_BASE_URL}/api/admin/system/database`,
-    backups: `${API_BASE_URL}/api/admin/system/backups`,
-    monitoring: `${API_BASE_URL}/api/admin/system/monitoring`
+    systemStatus: `${API_BASE_URL}/admin/system/status`,
+    servers: `${API_BASE_URL}/admin/system/servers`,
+    database: `${API_BASE_URL}/admin/system/database`,
+    backups: `${API_BASE_URL}/admin/system/backups`,
+    monitoring: `${API_BASE_URL}/admin/system/monitoring`
   };
 
   // Initialize data on component mount

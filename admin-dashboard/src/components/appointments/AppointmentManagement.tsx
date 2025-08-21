@@ -51,7 +51,7 @@ const AppointmentManagement: React.FC = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/appointments?date=${selectedDate}`, {
+      const response = await fetch(`${API_BASE_URL}/appointments?date=${selectedDate}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -74,7 +74,7 @@ const AppointmentManagement: React.FC = () => {
   const fetchPendingAppointments = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/appointments/pending`, {
+      const response = await fetch(`${API_BASE_URL}/appointments/pending`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -107,7 +107,7 @@ const AppointmentManagement: React.FC = () => {
         requestBody.appointmentTime = customTime;
       }
       
-      const response = await fetch(`${API_BASE_URL}/api/appointments/${appointmentId}/approve`, {
+      const response = await fetch(`${API_BASE_URL}/appointments/${appointmentId}/approve`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -154,7 +154,7 @@ const AppointmentManagement: React.FC = () => {
 
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/appointments/${appointmentId}/reject`, {
+      const response = await fetch(`${API_BASE_URL}/appointments/${appointmentId}/reject`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
