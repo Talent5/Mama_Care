@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   User, 
   Bell, 
   Shield, 
-  Globe, 
   Database, 
   Save,
   Eye,
@@ -16,6 +16,7 @@ import { useToast } from '../../hooks/useToast';
 import Avatar from '../common/Avatar';
 
 const SettingsPanel: React.FC = () => {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'security' | 'system'>('profile');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -23,6 +24,14 @@ const SettingsPanel: React.FC = () => {
   const [notificationSettings, setNotificationSettings] = useState<any>(null);
   const [systemSettings, setSystemSettings] = useState<any>(null);
   const { showToast } = useToast();
+
+  // Handle navigation state to set active tab
+  useEffect(() => {
+    const state = location.state as { activeTab?: string } | null;
+    if (state?.activeTab && ['profile', 'notifications', 'security', 'system'].includes(state.activeTab)) {
+      setActiveTab(state.activeTab as 'profile' | 'notifications' | 'security' | 'system');
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const loadTabData = async (tab: string) => {

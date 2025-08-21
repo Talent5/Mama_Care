@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Bell, 
   Globe, 
@@ -36,6 +37,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, sidebarOpen }) => {
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
@@ -131,6 +133,17 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, sidebarOpen }) => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Navigation handlers
+  const handleViewProfile = () => {
+    setShowProfile(false);
+    navigate('/settings', { state: { activeTab: 'profile' } });
+  };
+
+  const handleSettings = () => {
+    setShowProfile(false);
+    navigate('/settings');
+  };
 
   // Get icon for notification type
   const getNotificationIcon = (notification: NotificationData) => {
@@ -342,11 +355,17 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, sidebarOpen }) => {
                     </div>
                   </div>
                   <div className="p-2">
-                    <button className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-100 rounded-lg transition-colors">
+                    <button 
+                      onClick={handleViewProfile}
+                      className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-100 rounded-lg transition-colors"
+                    >
                       <User className="w-4 h-4 text-gray-500" />
                       <span className="text-sm text-gray-700">View Profile</span>
                     </button>
-                    <button className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-100 rounded-lg transition-colors">
+                    <button 
+                      onClick={handleSettings}
+                      className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-100 rounded-lg transition-colors"
+                    >
                       <Settings className="w-4 h-4 text-gray-500" />
                       <span className="text-sm text-gray-700">Settings</span>
                     </button>
