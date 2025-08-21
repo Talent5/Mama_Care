@@ -8,7 +8,8 @@ const AuthTestPanel: React.FC = () => {
   const loginAsSystemAdmin = async () => {
     setLoading(true);
     try {
-      const API_BASE_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000/api';
+      const baseUrl = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+      const API_BASE_URL = baseUrl.endsWith('/api') ? baseUrl : baseUrl + '/api';
       
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
@@ -115,7 +116,8 @@ const AuthTestPanel: React.FC = () => {
         throw new Error('No authentication token found');
       }
 
-      const API_BASE_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000/api';
+      const baseUrl = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+      const API_BASE_URL = baseUrl.endsWith('/api') ? baseUrl : baseUrl + '/api';
       const response = await fetch(`${API_BASE_URL}/admin/users`, {
         method: 'POST',
         headers: {

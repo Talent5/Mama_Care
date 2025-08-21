@@ -17,7 +17,8 @@ interface AuthResponse {
 
 export const loginAsSystemAdmin = async (): Promise<AuthResponse | null> => {
   try {
-    const API_BASE_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000/api';
+    const baseUrl = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    const API_BASE_URL = baseUrl.endsWith('/api') ? baseUrl : baseUrl + '/api';
     
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',

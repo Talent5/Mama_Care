@@ -1,5 +1,6 @@
 // API Configuration
-export const API_BASE_URL = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000') + '/api';
+const baseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+export const API_BASE_URL = baseUrl.endsWith('/api') ? baseUrl : baseUrl + '/api';
 
 // Authentication Configuration
 export const AUTH_TOKEN_KEY = 'mamacare_auth_token';
