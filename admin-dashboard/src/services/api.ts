@@ -270,8 +270,7 @@ export const usersAPI = {
     console.log('🚀 Sending user creation request to backend:', userData);
     console.log('🌐 API Base URL:', api.defaults.baseURL);
     try {
-      const response = await api.post('/users', userData);
-      console.log('✅ User creation response:', response.data);
+      const response = await api.post('/users', userData);
       return response.data;
     } catch (error) {
       console.error('❌ User creation error:', error);
@@ -320,8 +319,7 @@ export const userManagementAPI = {
   // Create new user
   createUser: async (userData: CreateUserRequest): Promise<ApiResponse<User>> => {
     console.log('🚀 Creating user with data:', userData);
-    const response = await api.post('/users', userData);
-    console.log('✅ User created successfully:', response.data);
+    const response = await api.post('/users', userData);
     return response.data;
   },
 

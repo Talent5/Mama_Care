@@ -20,11 +20,19 @@
       }
     },
     "production": {
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://mama-care-g7y1.onrender.com/api",
+        "EXPO_PUBLIC_ENVIRONMENT": "production"
+      },
       "android": {
         "buildType": "app-bundle"
       }
     },
     "production-apk": {
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://mama-care-g7y1.onrender.com/api",
+        "EXPO_PUBLIC_ENVIRONMENT": "production"
+      },
       "android": {
         "buildType": "apk"
       }
