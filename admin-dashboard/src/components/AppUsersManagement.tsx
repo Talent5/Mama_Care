@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Users, UserCheck, Calendar, Phone, Mail, MapPin, Filter, MoreHorizontal, RefreshCw } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 interface AppUser {
   id: string;
@@ -92,7 +93,7 @@ const AppUsersManagement: React.FC = () => {
 
       console.log('Loading app users with params:', params.toString());
 
-      const response = await fetch(`http://localhost:5000/api/patients/assignment/all-app-users?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/patients/assignment/all-app-users?${params}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
           'Content-Type': 'application/json'
@@ -133,7 +134,7 @@ const AppUsersManagement: React.FC = () => {
 
   const loadDoctors = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/users/doctors', {
+      const response = await fetch(`${API_BASE_URL}/users/doctors`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
           'Content-Type': 'application/json'
@@ -194,7 +195,7 @@ const AppUsersManagement: React.FC = () => {
       setAssigningPatientId(patientId);
       console.log(`Assigning doctor ${doctorId} to patient ${patientId}`);
       
-      const response = await fetch(`http://localhost:5000/api/patients/assignment/${patientId}/assign-doctor`, {
+      const response = await fetch(`${API_BASE_URL}/patients/assignment/${patientId}/assign-doctor`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
