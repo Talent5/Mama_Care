@@ -56,9 +56,40 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
+// More lenient rate limiting for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // Allow 20 login attempts per 15 minutes
+  message: {
+    error: 'Too many login attempts, please try again later.',
+    retryAfter: 900 // 15 minutes
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Apply rate limiting to API routes
 if (process.env.NODE_ENV === 'production') {
-  app.use('/api/', limiter);
+  // Apply more lenient rate limiting to auth endpoints
+  app.use('/api/auth', authLimiter);
+  
+  // Apply general rate limiting to other routes
+  app.use('/api/', (req, res, next) => {
+    // Skip auth endpoints as they have their own limiter
+    if (req.path.startsWith('/auth/')) {
+      return next();
+    }
+    return limiter(req, res, next);
+  });
+} else {
+  // In development, apply very lenient rate limiting
+  const devLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 1000, // Very high limit for development
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use('/api/', devLimiter);
 }
 
 // Health check endpoint
@@ -91,8 +122,22 @@ const corsOriginFunction = (origin, callback) => {
     return callback(null, true);
   }
   
+  // In production, be more permissive for now to fix the immediate issue
+  // You can tighten this later once everything is working
+  if (process.env.NODE_ENV === 'production') {
+    // Always allow your Render deployment domains
+    if (origin.includes('mama-care') && origin.includes('onrender.com')) {
+      return callback(null, true);
+    }
+    
+    // Allow your admin dashboard domains
+    if (origin.includes('mamacare-admin') && origin.includes('onrender.com')) {
+      return callback(null, true);
+    }
+  }
+  
   // Check if origin is in explicitly allowed origins
-  if (corsOrigins.includes(origin)) {
+  if (Array.isArray(corsOrigins) && corsOrigins.includes(origin)) {
     return callback(null, true);
   }
   
@@ -121,6 +166,8 @@ const corsOriginFunction = (origin, callback) => {
   }
   
   console.log(`🚫 [CORS] Blocked origin: ${origin}`);
+  console.log(`🔍 [DEBUG] Available CORS origins:`, corsOrigins);
+  console.log(`🔍 [DEBUG] Environment:`, process.env.NODE_ENV);
   callback(new Error('Not allowed by CORS'));
 };
 
@@ -141,6 +188,28 @@ app.use((req, res, next) => {
   // Log CORS requests for debugging
   if (origin) {
     console.log(`🌐 [CORS] Request from origin: ${origin}`);
+  } else {
+    console.log(`🌐 [CORS] Request with no origin (likely mobile app)`);
+  }
+  
+  // Set CORS headers more explicitly for production issues
+  if (origin) {
+    // In production, be more specific about allowed origins
+    if (process.env.NODE_ENV === 'production') {
+      if (origin.includes('mama-care') && origin.includes('onrender.com')) {
+        res.header('Access-Control-Allow-Origin', origin);
+      } else if (origin.includes('mamacare-admin') && origin.includes('onrender.com')) {
+        res.header('Access-Control-Allow-Origin', origin);
+      } else if (origin.includes('localhost')) {
+        res.header('Access-Control-Allow-Origin', origin);
+      }
+    } else {
+      // In development, allow all origins
+      res.header('Access-Control-Allow-Origin', origin);
+    }
+  } else {
+    // For requests without origin (mobile apps), allow them
+    res.header('Access-Control-Allow-Origin', '*');
   }
   
   // Set additional headers for better compatibility
@@ -151,8 +220,8 @@ app.use((req, res, next) => {
   
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
-    console.log(`✅ [CORS] Preflight request handled for ${origin}`);
-    res.sendStatus(200);
+    console.log(`✅ [CORS] Preflight request handled for ${origin || 'no-origin'}`);
+    res.status(200).end();
     return;
   }
   
