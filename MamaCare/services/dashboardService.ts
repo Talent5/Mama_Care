@@ -36,6 +36,11 @@ export interface DashboardData {
       required: number;
       percentage: number;
     };
+    exercise?: {
+      current: number;
+      target: number;
+      percentage: number;
+    };
     symptoms: string[];
     lastCheckup: string;
     nextCheckup: string;
@@ -319,6 +324,7 @@ class DashboardService {
       healthMetrics: {
         waterIntake: { current: 6, target: 8, percentage: 75 },
         prenatalVitamins: { taken: 1, required: 1, percentage: 100 },
+        exercise: { current: 20, target: 30, percentage: 67 },
         symptoms: ['Morning sickness', 'Fatigue'],
         lastCheckup: '2024-08-01',
         nextCheckup: '2024-08-15'

@@ -22,6 +22,7 @@ import MedicalRecordsManager from '../components/MedicalRecordsManager';
 import AccountSettings from '../components/AccountSettings';
 import { AuthStorage, MedicalRecord, StoredUser } from '../utils/databaseAuthStorage';
 import { authService } from '../services';
+import profileService, { PatientData, ProfileMedicalRecord } from '../services/profileService';
 import { convertToStoredUser } from '../utils/userUtils';
 import PINLockScreen from './PINLockScreen';
 
@@ -32,24 +33,65 @@ interface ProfileScreenProps {
   onLogout?: () => void;
 }
 
-interface ANCAVisit {
+interface PatientProfile {
+  _id: string;
+  user: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    avatar?: string;
+  };
+  dateOfBirth: string;
+  gender: string;
+  phone?: string;
+  address?: string;
+  facility?: string;
+  region?: string;
+  emergencyContact?: {
+    name: string;
+    relationship: string;
+    phone: string;
+  };
+  currentPregnancy?: {
+    isPregnant: boolean;
+    estimatedDueDate?: string;
+    currentWeek?: number;
+    riskLevel?: string;
+    complications?: string[];
+  };
+  medicalHistory?: string[];
+  allergies?: string[];
+  medications?: string[];
+  bloodType?: string;
+  assignedDoctor?: {
+    firstName: string;
+    lastName: string;
+    specialization?: string;
+  };
+}
+
+interface RealMedicalRecord {
+  _id: string;
   visitDate: string;
-  clinic: string;
-  outcome: string;
+  visitType: string;
+  chiefComplaint: string;
+  diagnosis: {
+    primary: string;
+    secondary?: string[];
+  };
+  treatment?: {
+    medications?: Array<{
+      name: string;
+      dosage?: string;
+      frequency?: string;
+    }>;
+  };
+  provider?: {
+    firstName: string;
+    lastName: string;
+  };
   notes?: string;
-}
-
-interface Vaccination {
-  vaccineName: string;
-  date: string;
-  status: 'completed' | 'scheduled' | 'overdue';
-  batchNumber?: string;
-}
-
-interface DoctorNote {
-  date: string;
-  note: string;
-  doctor: string;
 }
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onLogout }) => {
@@ -58,6 +100,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onLogout }) => {
   const [hasPIN, setHasPIN] = useState(false);
   const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
+  const [patientProfile, setPatientProfile] = useState<PatientData | null>(null);
+  const [realMedicalRecords, setRealMedicalRecords] = useState<ProfileMedicalRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showPersonalInfo, setShowPersonalInfo] = useState(false);
@@ -87,81 +131,114 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onLogout }) => {
     }
   };
 
-  const loadMedicalRecords = async () => {
+  const loadProfileData = async () => {
     try {
       setIsLoading(true);
+      console.log('🔄 Loading real profile data from backend...');
       
-      // First, check if user is authenticated
+      // Check authentication
       const isAuthenticated = authService.isAuthenticated();
-      console.log('User authentication status:', isAuthenticated);
-      
       if (!isAuthenticated) {
-        console.log('User not authenticated, showing minimal profile');
+        console.log('❌ User not authenticated');
         setCurrentUser(null);
-        setMedicalRecords([]);
+        setPatientProfile(null);
+        setRealMedicalRecords([]);
         return;
       }
-      
-      // Try to get user from auth service first (most up-to-date)
+
+      // Get user from auth service
       const authUser = authService.getUser();
-      
       if (authUser) {
-        console.log('Loading user from auth service:', authUser);
-        // Convert authUser to StoredUser format for compatibility
         const user = convertToStoredUser(authUser);
-        if (user) {
-          setCurrentUser(user);
-          console.log('Successfully set current user from auth service');
-        }
-      } else {
-        console.log('Auth service user not found, checking database...');
-        // Fallback to database storage if auth service doesn't have user
-        try {
-          const dbUser = await AuthStorage.getCurrentUser();
-          console.log('Database user result:', dbUser ? 'Found' : 'Not found');
-          if (dbUser) {
-            setCurrentUser(dbUser);
-            console.log('Successfully set current user from database');
-          }
-        } catch (dbError) {
-          console.error('Error loading user from database:', dbError);
-          // Don't show error for user loading failure, just continue with null user
-        }
+        setCurrentUser(user);
+        console.log('✅ User loaded from auth service:', user?.email);
       }
-      
-      // Load medical records - this should work independently of user data
+
+      // Load real patient profile from backend
       try {
-        console.log('Loading medical records...');
-        let records = await AuthStorage.getMedicalRecords();
-        console.log('Loaded medical records count:', records.length);
+        console.log('📊 Fetching patient profile from API...');
+        const profileResponse = await profileService.getMyProfile();
         
-        // Add dummy data if no records exist
-        if (records.length === 0) {
-          console.log('No medical records found, adding dummy data...');
-          await addDummyData();
-          records = await AuthStorage.getMedicalRecords();
-          console.log('After adding dummy data, record count:', records.length);
+        if (profileResponse.success && profileResponse.data) {
+          console.log('✅ Patient profile loaded successfully');
+          setPatientProfile(profileResponse.data);
+          
+          // Update current user with backend data if available
+          if (profileResponse.data.user) {
+            const backendUser = convertToStoredUser({
+              _id: profileResponse.data.user._id,
+              firstName: profileResponse.data.user.firstName,
+              lastName: profileResponse.data.user.lastName,
+              email: profileResponse.data.user.email,
+              phone: profileResponse.data.user.phone,
+              role: profileResponse.data.user.role
+            });
+            if (backendUser) {
+              setCurrentUser(backendUser);
+            }
+          }
+        } else {
+          console.warn('⚠️ Patient profile API returned no data');
         }
-        
-        setMedicalRecords(records);
-        console.log('Successfully set medical records');
-      } catch (recordError) {
-        console.error('Error loading medical records:', recordError);
-        // Don't show error if just medical records fail, user info might still work
-        setMedicalRecords([]);
-        console.log('Set empty medical records due to error');
+      } catch (profileError) {
+        console.error('❌ Failed to load patient profile:', profileError);
       }
-      
-      console.log('Profile loading completed successfully');
+
+      // Load real medical records from backend
+      try {
+        console.log('📋 Fetching medical records from API...');
+        const recordsResponse = await profileService.getMyMedicalRecords();
+        
+        if (recordsResponse.success && recordsResponse.data) {
+          console.log('✅ Medical records loaded:', recordsResponse.data.length, 'records');
+          setRealMedicalRecords(recordsResponse.data);
+          
+          // Convert to legacy format for compatibility with existing UI
+          const legacyRecords: MedicalRecord[] = recordsResponse.data.map((record: ProfileMedicalRecord) => ({
+            type: 'medical_record' as const,
+            date: record.date,
+            data: {
+              visitType: record.visitType || record.type,
+              chiefComplaint: record.chiefComplaint || record.description,
+              diagnosis: record.diagnosis || record.title,
+              medications: record.medications || [],
+              provider: record.doctor || 'Healthcare Provider',
+              notes: record.notes || record.description
+            }
+          }));
+          
+          setMedicalRecords(legacyRecords);
+        } else {
+          console.warn('⚠️ Medical records API returned no data');
+          // Set empty records instead of creating dummy data
+          setRealMedicalRecords([]);
+          setMedicalRecords([]);
+        }
+      } catch (recordsError) {
+        console.error('❌ Failed to load medical records:', recordsError);
+        setRealMedicalRecords([]);
+        setMedicalRecords([]);
+      }
+
+      console.log('✅ Profile data loading completed');
       
     } catch (error) {
-      console.error('Critical error in loadMedicalRecords:', error);
-      // Only show error if it's a critical failure that prevents any functionality
-      // Alert.alert('Error', 'Some profile data could not be loaded. Please check your connection and try again.');
+      console.error('💥 Critical error loading profile data:', error);
+      Alert.alert(
+        'Loading Error',
+        'Unable to load your profile data. Please check your connection and try again.',
+        [
+          { text: 'Retry', onPress: loadProfileData },
+          { text: 'OK' }
+        ]
+      );
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Backward compatibility - alias for existing code
+  const loadMedicalRecords = loadProfileData;
 
   const refreshData = async () => {
     await loadMedicalRecords();
@@ -544,11 +621,15 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onLogout }) => {
           </View>
         </View>
         
-        {/* User Profile Card */}
+        {/* Enhanced User Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>👤</Text>
+              <Text style={styles.avatarText}>
+                {isLoading ? '⏳' : 
+                 (patientProfile?.user?.avatar ? '👤' : 
+                  (currentUser?.firstName?.charAt(0) || '👤'))}
+              </Text>
             </View>
             <View style={styles.statusIndicator} />
           </View>
@@ -556,28 +637,107 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onLogout }) => {
           <View style={styles.userInfo}>
             <Text style={styles.userName}>
               {isLoading ? 'Loading...' : 
-               currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Welcome!'}
+               (patientProfile ? 
+                `${patientProfile.user.firstName} ${patientProfile.user.lastName}` :
+                (currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Welcome!'))}
             </Text>
             <Text style={styles.userRole}>
-              {isLoading ? 'Loading profile...' : 'Patient Profile'}
+              {isLoading ? 'Loading profile...' : 
+               (patientProfile?.currentPregnancy?.isPregnant ? 
+                '🤰 Expectant Mother' : '👩‍⚕️ Patient Profile')}
             </Text>
             <Text style={styles.userEmail}>
-              {isLoading ? 'Loading email...' : (currentUser?.email || 'Email not available')}
+              {isLoading ? 'Loading email...' : 
+               (patientProfile?.user?.email || currentUser?.email || 'Email not available')}
             </Text>
+            
+            {/* Enhanced Stats with Real Data */}
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{isLoading ? '...' : medicalRecords.length}</Text>
+                <Text style={styles.statNumber}>
+                  {isLoading ? '...' : realMedicalRecords.length}
+                </Text>
                 <Text style={styles.statLabel}>Records</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{isLoading ? '...' : ancVisits.length}</Text>
-                <Text style={styles.statLabel}>Visits</Text>
+                <Text style={styles.statNumber}>
+                  {isLoading ? '...' : 
+                   (patientProfile?.currentPregnancy?.currentWeek || 0)}
+                </Text>
+                <Text style={styles.statLabel}>
+                  {patientProfile?.currentPregnancy?.isPregnant ? 'Weeks' : 'Age'}
+                </Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{isLoading ? '...' : vaccinations.length}</Text>
-                <Text style={styles.statLabel}>Vaccines</Text>
+                <Text style={styles.statNumber}>
+                  {isLoading ? '...' : 
+                   (patientProfile?.currentPregnancy?.isPregnant ? 
+                    (profileService.getDaysUntilDue(patientProfile) || 0) : 
+                    (patientProfile ? profileService.getAge(patientProfile) : 0))}
+                </Text>
+                <Text style={styles.statLabel}>
+                  {patientProfile?.currentPregnancy?.isPregnant ? 'Days Left' : 'Years'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Pregnancy Status Card (if pregnant) */}
+            {patientProfile?.currentPregnancy?.isPregnant && (
+              <View style={styles.pregnancyStatusCard}>
+                <View style={styles.pregnancyHeader}>
+                  <Text style={styles.pregnancyEmoji}>🤰</Text>
+                  <View style={styles.pregnancyInfo}>
+                    <Text style={styles.pregnancyTitle}>Active Pregnancy</Text>
+                    <Text style={styles.pregnancyDetails}>
+                      Week {patientProfile.currentPregnancy.currentWeek} • 
+                      {patientProfile.currentPregnancy.riskLevel ? 
+                        ` ${patientProfile.currentPregnancy.riskLevel.charAt(0).toUpperCase() + 
+                           patientProfile.currentPregnancy.riskLevel.slice(1)} Risk` : 
+                        ' Standard Care'}
+                    </Text>
+                  </View>
+                </View>
+                {patientProfile.currentPregnancy.estimatedDueDate && (
+                  <Text style={styles.dueDateText}>
+                    Due: {new Date(patientProfile.currentPregnancy.estimatedDueDate).toLocaleDateString()}
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {/* Health Summary Card */}
+            <View style={styles.healthSummaryCard}>
+              <Text style={styles.healthSummaryTitle}>Health Summary</Text>
+              <View style={styles.healthSummaryGrid}>
+                <View style={styles.healthSummaryItem}>
+                  <Text style={styles.healthSummaryLabel}>Blood Type</Text>
+                  <Text style={styles.healthSummaryValue}>
+                    {patientProfile?.bloodType || 'Not specified'}
+                  </Text>
+                </View>
+                <View style={styles.healthSummaryItem}>
+                  <Text style={styles.healthSummaryLabel}>Allergies</Text>
+                  <Text style={styles.healthSummaryValue}>
+                    {patientProfile?.allergies?.length ? 
+                      `${patientProfile.allergies.length} known` : 'None recorded'}
+                  </Text>
+                </View>
+                <View style={styles.healthSummaryItem}>
+                  <Text style={styles.healthSummaryLabel}>Current Meds</Text>
+                  <Text style={styles.healthSummaryValue}>
+                    {patientProfile?.medications?.length || 0}
+                  </Text>
+                </View>
+                <View style={styles.healthSummaryItem}>
+                  <Text style={styles.healthSummaryLabel}>Care Provider</Text>
+                  <Text style={styles.healthSummaryValue}>
+                    {patientProfile?.assignedDoctor ? 
+                      `Dr. ${patientProfile.assignedDoctor.firstName} ${patientProfile.assignedDoctor.lastName}` : 
+                      patientProfile?.facility || 'General Hospital'}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
@@ -1610,6 +1770,81 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 30,
+  },
+
+  // Enhanced Profile Styles
+  pregnancyStatusCard: {
+    backgroundColor: '#e8f5e8',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4ea674',
+  },
+  pregnancyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pregnancyEmoji: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  pregnancyInfo: {
+    flex: 1,
+  },
+  pregnancyTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#023337',
+  },
+  pregnancyDetails: {
+    fontSize: 12,
+    color: '#4ea674',
+    marginTop: 2,
+  },
+  dueDateText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  healthSummaryCard: {
+    backgroundColor: '#f0f9f2',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+  },
+  healthSummaryTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#023337',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  healthSummaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  healthSummaryItem: {
+    width: '48%',
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  healthSummaryLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  healthSummaryValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#023337',
+    textAlign: 'center',
   },
 });
 

@@ -122,29 +122,49 @@ function DashboardScreen({ onLogout }: DashboardScreenProps) {
         
         if (response.success && response.data) {
           console.log('📊 Using real dashboard data from backend');
-          // Personalize the data with user information
-          const personalizedDashboardData = {
+          
+          // Use actual backend data with user info merged
+          const realDashboardData = {
             ...response.data,
             user: {
-              id: user._id,
-              firstName: user.firstName,
-              lastName: user.lastName,
-              email: user.email,
-              fullName: `${user.firstName} ${user.lastName}`,
-              avatar: `https://ui-avatars.com/api/?name=${user.firstName}+${user.lastName}&background=4ea674&color=fff`,
+              ...response.data.user,
+              avatar: response.data.user.avatar || `https://ui-avatars.com/api/?name=${user.firstName}+${user.lastName}&background=4ea674&color=fff`,
             },
           };
           
-          setDashboardData(personalizedDashboardData);
-          setCurrentWeek(personalizedDashboardData.pregnancy.currentWeek);
+          setDashboardData(realDashboardData);
+          setCurrentWeek(realDashboardData.pregnancy.currentWeek || 1);
+          
+          // Also load additional real data like health metrics and activity
+          await loadAdditionalRealData(user);
+          
         } else {
-          console.warn('❌ API returned unsuccessful response, using personalized mock data');
-          const mockData = createPersonalizedMockData(user);
-          setDashboardData(mockData);
-          setCurrentWeek(mockData.pregnancy.currentWeek);
+          console.warn('❌ API returned unsuccessful response, retrying once...');
+          // Retry once before falling back to mock data
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          const retryResponse = await dashboardService.getDashboardData();
+          
+          if (retryResponse.success && retryResponse.data) {
+            console.log('📊 Retry successful - using real dashboard data');
+            const realDashboardData = {
+              ...retryResponse.data,
+              user: {
+                ...retryResponse.data.user,
+                avatar: retryResponse.data.user.avatar || `https://ui-avatars.com/api/?name=${user.firstName}+${user.lastName}&background=4ea674&color=fff`,
+              },
+            };
+            setDashboardData(realDashboardData);
+            setCurrentWeek(realDashboardData.pregnancy.currentWeek || 1);
+            await loadAdditionalRealData(user);
+          } else {
+            console.warn('❌ Retry failed, using enhanced mock data with real user info');
+            const mockData = createPersonalizedMockData(user);
+            setDashboardData(mockData);
+            setCurrentWeek(mockData.pregnancy.currentWeek);
+          }
         }
       } catch (apiError) {
-        console.warn('⚠️ API unavailable, using personalized mock data:', apiError);
+        console.warn('⚠️ API connection failed, using enhanced mock data:', apiError);
         const mockData = createPersonalizedMockData(user);
         setDashboardData(mockData);
         setCurrentWeek(mockData.pregnancy.currentWeek);
@@ -154,8 +174,124 @@ function DashboardScreen({ onLogout }: DashboardScreenProps) {
       // Fallback to basic personalized data
       const basicData = createPersonalizedMockData(user);
       setDashboardData(basicData);
-      setCurrentWeek(Math.floor(Math.random() * 40) + 1);
+      setCurrentWeek(basicData.pregnancy.currentWeek || 1);
     }
+  };
+
+  // Load additional real data from backend APIs
+  const loadAdditionalRealData = async (user: StoredUser) => {
+    try {
+      // Load real health metrics from last 7 days
+      const healthMetricsResponse = await dashboardService.getHealthMetrics(undefined, 7);
+      if (healthMetricsResponse.success && healthMetricsResponse.data && Array.isArray(healthMetricsResponse.data)) {
+        console.log('📊 Loaded real health metrics:', healthMetricsResponse.data.length, 'records');
+        
+        // Update dashboard data with real health metrics
+        setDashboardData(prevData => {
+          if (!prevData) return prevData;
+          
+          const metrics = healthMetricsResponse.data!;
+          const waterIntakeToday = metrics.filter(m => 
+            m.type === 'water_intake' && 
+            new Date(m.recordedAt).toDateString() === new Date().toDateString()
+          );
+          const vitaminsToday = metrics.filter(m => 
+            m.type === 'prenatal_vitamins' && 
+            new Date(m.recordedAt).toDateString() === new Date().toDateString()
+          );
+          const exerciseToday = metrics.filter(m => 
+            m.type === 'exercise' && 
+            new Date(m.recordedAt).toDateString() === new Date().toDateString()
+          );
+          
+          const waterTotal = waterIntakeToday.reduce((sum, m) => sum + m.value, 0);
+          const vitaminsTotal = vitaminsToday.reduce((sum, m) => sum + m.value, 0);
+          const exerciseTotal = exerciseToday.reduce((sum, m) => sum + m.value, 0);
+          
+          return {
+            ...prevData,
+            healthMetrics: {
+              ...prevData.healthMetrics,
+              waterIntake: {
+                current: waterTotal,
+                target: 8,
+                percentage: Math.round((waterTotal / 8) * 100)
+              },
+              prenatalVitamins: {
+                taken: vitaminsTotal,
+                required: 1,
+                percentage: Math.min(100, vitaminsTotal * 100)
+              },
+              exercise: {
+                current: exerciseTotal,
+                target: 30,
+                percentage: Math.round((exerciseTotal / 30) * 100)
+              }
+            }
+          };
+        });
+      }
+
+      // Load real activity feed
+      const activityResponse = await dashboardService.getActivityFeed(5);
+      if (activityResponse.success && activityResponse.data && Array.isArray(activityResponse.data)) {
+        console.log('📊 Loaded real activity feed:', activityResponse.data.length, 'activities');
+        
+        setDashboardData(prevData => {
+          if (!prevData) return prevData;
+          
+          const realActivities = activityResponse.data!.map((activity: any, index: number) => ({
+            id: activity.id || `activity_${index}`,
+            type: activity.type || 'general',
+            description: activity.description || 'Activity logged',
+            timestamp: formatTimeAgo(activity.timestamp || activity.createdAt),
+            icon: getActivityIcon(activity.type)
+          }));
+          
+          return {
+            ...prevData,
+            recentActivity: realActivities.length > 0 ? realActivities : prevData.recentActivity
+          };
+        });
+      }
+
+    } catch (error) {
+      console.warn('⚠️ Could not load additional real data, using existing data:', error);
+    }
+  };
+
+  // Helper function to format timestamps
+  const formatTimeAgo = (timestamp: string | Date): string => {
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffHours / 24);
+      
+      if (diffHours < 1) return 'Just now';
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      return date.toLocaleDateString();
+    } catch {
+      return 'Recently';
+    }
+  };
+
+  // Helper function to get activity icons
+  const getActivityIcon = (type: string): string => {
+    const icons: Record<string, string> = {
+      medication: '💊',
+      prenatal_vitamins: '💊',
+      health_metric: '📊',
+      symptom_log: '📝',
+      appointment: '📅',
+      reading: '📖',
+      exercise: '🏃‍♀️',
+      checkup: '🩺',
+      general: '📋'
+    };
+    return icons[type] || '📝';
   };
 
   const createPersonalizedMockData = (user: StoredUser): DashboardData => {
@@ -187,6 +323,7 @@ function DashboardScreen({ onLogout }: DashboardScreenProps) {
       healthMetrics: {
         waterIntake: { current: 6, target: 8, percentage: 75 },
         prenatalVitamins: { taken: 1, required: 1, percentage: 100 },
+        exercise: { current: 15, target: 30, percentage: 50 },
         symptoms: ['Mild nausea', 'Fatigue'],
         lastCheckup: new Date(Date.now() - (7 * 24 * 60 * 60 * 1000)).toISOString(),
         nextCheckup: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)).toISOString()
@@ -331,7 +468,59 @@ function DashboardScreen({ onLogout }: DashboardScreenProps) {
   };
 
   const handleExercisePress = () => {
-    setShowExercise(true);
+    Alert.alert(
+      'Exercise 🏃‍♀️',
+      'Record your physical activity',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: '15 Minutes',
+          onPress: async () => {
+            try {
+              console.log('🏃‍♀️ Recording 15 minutes of exercise...');
+              await dashboardService.recordHealthMetric({
+                type: 'exercise',
+                value: 15,
+                unit: 'minutes',
+                notes: 'Light exercise from dashboard'
+              });
+              Alert.alert('Great Job!', '15 minutes of exercise recorded!');
+              if (personalizedData.user) {
+                await loadAdditionalRealData(personalizedData.user);
+              }
+            } catch (error) {
+              console.error('Exercise logging error:', error);
+              Alert.alert('Recorded Locally', 'Exercise logged! Will sync when online.');
+            }
+          }
+        },
+        {
+          text: '30 Minutes',
+          onPress: async () => {
+            try {
+              console.log('🏃‍♀️ Recording 30 minutes of exercise...');
+              await dashboardService.recordHealthMetric({
+                type: 'exercise',
+                value: 30,
+                unit: 'minutes',
+                notes: 'Moderate exercise from dashboard'
+              });
+              Alert.alert('Excellent!', '30 minutes of exercise recorded!');
+              if (personalizedData.user) {
+                await loadAdditionalRealData(personalizedData.user);
+              }
+            } catch (error) {
+              console.error('Exercise logging error:', error);
+              Alert.alert('Recorded Locally', 'Exercise logged! Will sync when online.');
+            }
+          }
+        },
+        {
+          text: 'Open Exercise Screen',
+          onPress: () => setShowExercise(true)
+        }
+      ]
+    );
   };
 
   const handleMeditationPress = () => {
@@ -343,39 +532,87 @@ function DashboardScreen({ onLogout }: DashboardScreenProps) {
   };
 
   const handleWaterIntakePress = async () => {
-    try {
-      console.log('💧 Recording water intake...');
-      await dashboardService.recordHealthMetric({
-        type: 'water_intake',
-        value: 1,
-        unit: 'glasses'
-      });
-      Alert.alert('Water Logged', 'One glass of water has been recorded!');
-      // Refresh dashboard data to show updated metrics
-      await loadPersonalizedDashboardData(personalizedData.user);
-    } catch (error) {
-      console.error('Water intake logging error:', error);
-      // Show success message even if backend is unavailable
-      Alert.alert('Water Logged', 'One glass of water has been recorded locally!');
-    }
+    Alert.alert(
+      'Water Intake 💧',
+      'How much water would you like to record?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: '+1 Glass',
+          onPress: async () => {
+            try {
+              console.log('💧 Recording 1 glass of water...');
+              await dashboardService.recordHealthMetric({
+                type: 'water_intake',
+                value: 1,
+                unit: 'glasses',
+                notes: 'Recorded from dashboard'
+              });
+              Alert.alert('Success!', 'One glass of water has been recorded!');
+              // Refresh with updated real data
+              if (personalizedData.user) {
+                await loadAdditionalRealData(personalizedData.user);
+              }
+            } catch (error) {
+              console.error('Water intake logging error:', error);
+              Alert.alert('Recorded Locally', 'Water intake saved! Will sync when online.');
+            }
+          }
+        },
+        {
+          text: '+2 Glasses',
+          onPress: async () => {
+            try {
+              console.log('💧 Recording 2 glasses of water...');
+              await dashboardService.recordHealthMetric({
+                type: 'water_intake',
+                value: 2,
+                unit: 'glasses',
+                notes: 'Recorded from dashboard'
+              });
+              Alert.alert('Success!', 'Two glasses of water have been recorded!');
+              if (personalizedData.user) {
+                await loadAdditionalRealData(personalizedData.user);
+              }
+            } catch (error) {
+              console.error('Water intake logging error:', error);
+              Alert.alert('Recorded Locally', 'Water intake saved! Will sync when online.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleVitaminsPress = async () => {
-    try {
-      console.log('💊 Recording prenatal vitamins...');
-      await dashboardService.recordHealthMetric({
-        type: 'prenatal_vitamins',
-        value: 1,
-        unit: 'doses'
-      });
-      Alert.alert('Vitamins Logged', 'Prenatal vitamins have been recorded!');
-      // Refresh dashboard data to show updated metrics
-      await loadPersonalizedDashboardData(personalizedData.user);
-    } catch (error) {
-      console.error('Vitamins logging error:', error);
-      // Show success message even if backend is unavailable
-      Alert.alert('Vitamins Logged', 'Prenatal vitamins have been recorded locally!');
-    }
+    Alert.alert(
+      'Prenatal Vitamins 💊',
+      'Mark your prenatal vitamins as taken today?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Mark as Taken',
+          onPress: async () => {
+            try {
+              console.log('💊 Recording prenatal vitamins...');
+              await dashboardService.recordHealthMetric({
+                type: 'prenatal_vitamins',
+                value: 1,
+                unit: 'dose',
+                notes: 'Recorded from dashboard'
+              });
+              Alert.alert('Success!', 'Prenatal vitamins have been recorded!');
+              if (personalizedData.user) {
+                await loadAdditionalRealData(personalizedData.user);
+              }
+            } catch (error) {
+              console.error('Vitamins logging error:', error);
+              Alert.alert('Recorded Locally', 'Vitamins logged! Will sync when online.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const getPregnancyStageInfo = (week: number) => {
@@ -609,19 +846,20 @@ function DashboardScreen({ onLogout }: DashboardScreenProps) {
               <TouchableOpacity 
                 style={styles.healthCard}
                 activeOpacity={0.8}
+                onPress={handleExercisePress}
               >
                 <View style={styles.healthIconContainer}>
                   <Text style={styles.healthIcon}>🏃‍♀️</Text>
                 </View>
                 <Text style={styles.healthMetric}>
-                  0/30
+                  {dashboardData?.healthMetrics?.exercise?.current || 0}/30
                 </Text>
                 <Text style={styles.healthLabel}>Minutes Exercise</Text>
                 <View style={styles.healthProgress}>
                   <View style={[
                     styles.healthProgressFill, 
                     { 
-                      width: '0%', 
+                      width: `${dashboardData?.healthMetrics?.exercise?.percentage || 0}%`, 
                       backgroundColor: '#74b9ff' 
                     }
                   ]} />

@@ -147,6 +147,64 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
     );
   };
 
+  const handleChangePassword = () => {
+    Alert.prompt(
+      'Change Password',
+      'Enter your current password:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Next',
+          onPress: (currentPassword) => {
+            if (!currentPassword) {
+              Alert.alert('Error', 'Current password is required');
+              return;
+            }
+            
+            Alert.prompt(
+              'New Password',
+              'Enter your new password (minimum 6 characters):',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Change Password',
+                  onPress: async (newPassword) => {
+                    if (!newPassword || newPassword.length < 6) {
+                      Alert.alert('Error', 'New password must be at least 6 characters long');
+                      return;
+                    }
+                    
+                    try {
+                      setIsLoading(true);
+                      const authService = (await import('../services/authService')).default;
+                      const result = await authService.changePassword({
+                        currentPassword,
+                        newPassword
+                      });
+                      
+                      if (result.success) {
+                        Alert.alert('Success', 'Password changed successfully');
+                      } else {
+                        Alert.alert('Error', result.message || 'Failed to change password');
+                      }
+                    } catch (error) {
+                      console.error('Error changing password:', error);
+                      Alert.alert('Error', 'Failed to change password. Please check your current password and try again.');
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  },
+                },
+              ],
+              'secure-text'
+            );
+          },
+        },
+      ],
+      'secure-text'
+    );
+  };
+
   const handleClearMedicalRecords = () => {
     Alert.alert(
       'Clear Medical Records',
@@ -317,6 +375,13 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
           title: 'Change PIN',
           subtitle: 'Update your security PIN',
           onPress: handleChangePIN,
+        },
+        {
+          type: 'action' as const,
+          icon: '🔑',
+          title: 'Change Password',
+          subtitle: 'Update your account password',
+          onPress: handleChangePassword,
         },
         {
           type: 'toggle' as const,
