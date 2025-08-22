@@ -479,6 +479,48 @@ class ApiService {
     }
   }
 
+  // Forgot Password Methods
+  async forgotPassword(email: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const response = await this.request('/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      });
+
+      return {
+        success: response.success,
+        message: response.message || 'Password reset instructions sent to your email',
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to send password reset instructions',
+      };
+    }
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const response = await this.request('/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          token,
+          newPassword 
+        }),
+      });
+
+      return {
+        success: response.success,
+        message: response.message || 'Password reset successfully',
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to reset password',
+      };
+    }
+  }
+
   // Settings Methods
   async getNotificationSettings(): Promise<any> {
     try {

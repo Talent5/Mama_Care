@@ -2,7 +2,7 @@
   "expo": {
     "name": "MamaCare",
     "slug": "MamaCare",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/Logo.png",
     "scheme": "mamacare",
@@ -19,7 +19,7 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.boikeys5.mamacare",
-      "versionCode": 3
+      "versionCode": 4
     },
     "web": {
       "bundler": "metro",

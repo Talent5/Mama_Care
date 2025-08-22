@@ -91,30 +91,73 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onLogout }) => {
     try {
       setIsLoading(true);
       
-      // Get user from auth service (in memory, faster)
+      // First, check if user is authenticated
+      const isAuthenticated = authService.isAuthenticated();
+      console.log('User authentication status:', isAuthenticated);
+      
+      if (!isAuthenticated) {
+        console.log('User not authenticated, showing minimal profile');
+        setCurrentUser(null);
+        setMedicalRecords([]);
+        return;
+      }
+      
+      // Try to get user from auth service first (most up-to-date)
       const authUser = authService.getUser();
-      const user = convertToStoredUser(authUser);
       
-      if (!user) {
-        // Fallback to database storage if auth service doesn't have user
-        const dbUser = await AuthStorage.getCurrentUser();
-        setCurrentUser(dbUser);
+      if (authUser) {
+        console.log('Loading user from auth service:', authUser);
+        // Convert authUser to StoredUser format for compatibility
+        const user = convertToStoredUser(authUser);
+        if (user) {
+          setCurrentUser(user);
+          console.log('Successfully set current user from auth service');
+        }
       } else {
-        setCurrentUser(user);
+        console.log('Auth service user not found, checking database...');
+        // Fallback to database storage if auth service doesn't have user
+        try {
+          const dbUser = await AuthStorage.getCurrentUser();
+          console.log('Database user result:', dbUser ? 'Found' : 'Not found');
+          if (dbUser) {
+            setCurrentUser(dbUser);
+            console.log('Successfully set current user from database');
+          }
+        } catch (dbError) {
+          console.error('Error loading user from database:', dbError);
+          // Don't show error for user loading failure, just continue with null user
+        }
       }
       
-      // Load medical records
-      let records = await AuthStorage.getMedicalRecords();
-      
-      // Add dummy data if no records exist
-      if (records.length === 0) {
-        await addDummyData();
-        records = await AuthStorage.getMedicalRecords();
+      // Load medical records - this should work independently of user data
+      try {
+        console.log('Loading medical records...');
+        let records = await AuthStorage.getMedicalRecords();
+        console.log('Loaded medical records count:', records.length);
+        
+        // Add dummy data if no records exist
+        if (records.length === 0) {
+          console.log('No medical records found, adding dummy data...');
+          await addDummyData();
+          records = await AuthStorage.getMedicalRecords();
+          console.log('After adding dummy data, record count:', records.length);
+        }
+        
+        setMedicalRecords(records);
+        console.log('Successfully set medical records');
+      } catch (recordError) {
+        console.error('Error loading medical records:', recordError);
+        // Don't show error if just medical records fail, user info might still work
+        setMedicalRecords([]);
+        console.log('Set empty medical records due to error');
       }
       
-      setMedicalRecords(records);
+      console.log('Profile loading completed successfully');
+      
     } catch (error) {
-      console.error('Error loading medical records:', error);
+      console.error('Critical error in loadMedicalRecords:', error);
+      // Only show error if it's a critical failure that prevents any functionality
+      // Alert.alert('Error', 'Some profile data could not be loaded. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -211,6 +254,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onLogout }) => {
   };
 
   const handlePINSetupSuccess = () => {
+    console.log('PIN setup successful, loading data...');
     setShowPINSetup(false);
     setHasPIN(true);
     setIsLocked(false);
@@ -218,6 +262,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onLogout }) => {
   };
 
   const handlePINVerifySuccess = () => {
+    console.log('PIN verified successfully, loading data...');
     setIsLocked(false);
     loadMedicalRecords();
   };
@@ -470,6 +515,16 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onLogout }) => {
           
           <View style={styles.headerActions}>
             <TouchableOpacity
+              onPress={() => {
+                console.log('Refresh button pressed');
+                loadMedicalRecords();
+              }}
+              style={styles.actionButton}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.actionIcon}>🔄</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={() => setShowSettings(true)}
               style={styles.actionButton}
               activeOpacity={0.8}
@@ -499,21 +554,29 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onLogout }) => {
           </View>
           
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Welcome Back!'}</Text>
-            <Text style={styles.userRole}>Patient Profile</Text>
+            <Text style={styles.userName}>
+              {isLoading ? 'Loading...' : 
+               currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Welcome!'}
+            </Text>
+            <Text style={styles.userRole}>
+              {isLoading ? 'Loading profile...' : 'Patient Profile'}
+            </Text>
+            <Text style={styles.userEmail}>
+              {isLoading ? 'Loading email...' : (currentUser?.email || 'Email not available')}
+            </Text>
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{medicalRecords.length}</Text>
+                <Text style={styles.statNumber}>{isLoading ? '...' : medicalRecords.length}</Text>
                 <Text style={styles.statLabel}>Records</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{ancVisits.length}</Text>
+                <Text style={styles.statNumber}>{isLoading ? '...' : ancVisits.length}</Text>
                 <Text style={styles.statLabel}>Visits</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{vaccinations.length}</Text>
+                <Text style={styles.statNumber}>{isLoading ? '...' : vaccinations.length}</Text>
                 <Text style={styles.statLabel}>Vaccines</Text>
               </View>
             </View>
@@ -576,6 +639,64 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onLogout }) => {
           </View>
         </View>
 
+        {/* Connection Status Message */}
+        {!isLoading && !currentUser && (
+          <View style={styles.section}>
+            <View style={styles.warningCard}>
+              <Text style={styles.warningIcon}>⚠️</Text>
+              <Text style={styles.warningTitle}>Profile Data Unavailable</Text>
+              <Text style={styles.warningText}>
+                Unable to load your profile information. This could be due to:
+              </Text>
+              <Text style={styles.warningText}>• Internet connection issues</Text>
+              <Text style={styles.warningText}>• Server connectivity problems</Text>
+              <Text style={styles.warningText}>• Authentication session expired</Text>
+              <TouchableOpacity 
+                style={styles.retryButton}
+                onPress={() => {
+                  console.log('Retry button pressed');
+                  loadMedicalRecords();
+                }}
+              >
+                <Text style={styles.retryButtonText}>🔄 Retry Loading</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Debug Info - Remove in production */}
+        {__DEV__ && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>🐛 Debug Info</Text>
+            <View style={styles.modernRecordCard}>
+              <View style={styles.recordContent}>
+                <View style={styles.recordRow}>
+                  <Text style={styles.recordLabel}>Auth Service User:</Text>
+                  <Text style={styles.recordValue}>
+                    {authService.getUser() ? 'Available' : 'Not available'}
+                  </Text>
+                </View>
+                <View style={styles.recordRow}>
+                  <Text style={styles.recordLabel}>Current User:</Text>
+                  <Text style={styles.recordValue}>
+                    {currentUser ? 'Loaded' : 'Not loaded'}
+                  </Text>
+                </View>
+                <View style={styles.recordRow}>
+                  <Text style={styles.recordLabel}>Loading:</Text>
+                  <Text style={styles.recordValue}>{isLoading ? 'Yes' : 'No'}</Text>
+                </View>
+                <View style={styles.recordRow}>
+                  <Text style={styles.recordLabel}>PIN Status:</Text>
+                  <Text style={styles.recordValue}>
+                    {isLocked ? 'Locked' : 'Unlocked'} / {hasPIN ? 'Has PIN' : 'No PIN'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* User Information Summary */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -590,12 +711,26 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onLogout }) => {
           <View style={styles.modernRecordCard}>
             <View style={styles.recordContent}>
               <View style={styles.recordRow}>
-                <Text style={styles.recordLabel}>Name:</Text>
-                <Text style={styles.recordValue}>{currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Not set'}</Text>
+                <Text style={styles.recordLabel}>Full Name:</Text>
+                <Text style={styles.recordValue}>
+                  {currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Not available - please check your connection'}
+                </Text>
+              </View>
+              <View style={styles.recordRow}>
+                <Text style={styles.recordLabel}>Email:</Text>
+                <Text style={styles.recordValue}>
+                  {currentUser?.email || 'Not available - please check your connection'}
+                </Text>
               </View>
               <View style={styles.recordRow}>
                 <Text style={styles.recordLabel}>Phone:</Text>
                 <Text style={styles.recordValue}>{currentUser?.phone || 'Not set'}</Text>
+              </View>
+              <View style={styles.recordRow}>
+                <Text style={styles.recordLabel}>User ID:</Text>
+                <Text style={[styles.recordValue, { fontSize: 12, fontFamily: 'monospace' }]}>
+                  {currentUser?._id || 'N/A'}
+                </Text>
               </View>
               <View style={styles.recordRow}>
                 <Text style={styles.recordLabel}>Member Since:</Text>
@@ -607,6 +742,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onLogout }) => {
                 <Text style={styles.recordLabel}>PIN Protection:</Text>
                 <Text style={[styles.recordValue, hasPIN && styles.completedText]}>
                   {hasPIN ? 'Enabled ✓' : 'Disabled'}
+                </Text>
+              </View>
+              <View style={styles.recordRow}>
+                <Text style={styles.recordLabel}>Account Status:</Text>
+                <Text style={[styles.recordValue, currentUser?.isActive && styles.completedText]}>
+                  {currentUser?.isActive ? 'Active ✓' : 'Inactive'}
                 </Text>
               </View>
             </View>
@@ -1058,6 +1199,11 @@ const styles = StyleSheet.create({
   userRole: {
     fontSize: 14,
     color: '#4ea674',
+    marginBottom: 4,
+  },
+  userEmail: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
     marginBottom: 12,
   },
   statsRow: {
@@ -1345,6 +1491,47 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     textAlign: 'center',
+  },
+  
+  // Warning/error state styles
+  warningCard: {
+    backgroundColor: '#fff3cd',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#ffeeba',
+    marginTop: 8,
+  },
+  warningIcon: {
+    fontSize: 24,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  warningTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#856404',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  warningText: {
+    fontSize: 14,
+    color: '#856404',
+    marginBottom: 4,
+    lineHeight: 18,
+  },
+  retryButton: {
+    backgroundColor: '#4ea674',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  retryButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   
   // Legacy styles (for compatibility)

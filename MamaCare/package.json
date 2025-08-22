@@ -1,7 +1,7 @@
 {
   "name": "mamacare",
   "main": "./index.js",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "scripts": {
     "start": "node scripts/dev-helper.js && expo start",
     "dev": "node scripts/dev-helper.js && expo start --clear",

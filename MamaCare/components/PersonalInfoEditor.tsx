@@ -10,7 +10,7 @@ import {
   SafeAreaView,
   ScrollView,
 } from 'react-native';
-import { AuthStorage, StoredUser } from '../utils/databaseAuthStorage';
+import { AuthStorage } from '../utils/databaseAuthStorage';
 
 interface PersonalInfoEditorProps {
   visible: boolean;
@@ -24,7 +24,6 @@ const PersonalInfoEditor: React.FC<PersonalInfoEditorProps> = ({
   onUpdate,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [userData, setUserData] = useState<StoredUser | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -43,7 +42,6 @@ const PersonalInfoEditor: React.FC<PersonalInfoEditorProps> = ({
       setIsLoading(true);
       const user = await AuthStorage.getCurrentUser();
       if (user) {
-        setUserData(user);
         setFormData({
           firstName: user.firstName || '',
           lastName: user.lastName || '',
@@ -68,23 +66,22 @@ const PersonalInfoEditor: React.FC<PersonalInfoEditorProps> = ({
     try {
       setIsLoading(true);
       
-      // Update user data
-      const updatedUser = {
-        ...userData,
-        ...formData,
-      };
+      // Update user data using the correct method
+      const result = await AuthStorage.updateUserProfile(formData);
       
-      await AuthStorage.updateUser(updatedUser);
-      
-      Alert.alert('Success', 'Personal information updated successfully', [
-        {
-          text: 'OK',
-          onPress: () => {
-            onUpdate();
-            onClose();
+      if (result.success) {
+        Alert.alert('Success', 'Personal information updated successfully', [
+          {
+            text: 'OK',
+            onPress: () => {
+              onUpdate();
+              onClose();
+            },
           },
-        },
-      ]);
+        ]);
+      } else {
+        Alert.alert('Error', result.error || 'Failed to update personal information');
+      }
     } catch (error) {
       console.error('Error saving user data:', error);
       Alert.alert('Error', 'Failed to update personal information');
@@ -114,60 +111,90 @@ const PersonalInfoEditor: React.FC<PersonalInfoEditorProps> = ({
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Basic Information</Text>
-            
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>First Name *</Text>
-              <TextInput
-                style={styles.textInput}
-                value={formData.firstName}
-                onChangeText={(text) => setFormData({ ...formData, firstName: text })}
-                placeholder="Enter your first name"
-                placeholderTextColor="#999"
-              />
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading your information...</Text>
             </View>
+          ) : (
+            <>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Basic Information</Text>
+                <Text style={styles.sectionSubtitle}>Update your personal details</Text>
+                
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>First Name *</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={formData.firstName}
+                    onChangeText={(text) => setFormData({ ...formData, firstName: text })}
+                    placeholder="Enter your first name"
+                    placeholderTextColor="#999"
+                    autoCapitalize="words"
+                  />
+                </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Last Name *</Text>
-              <TextInput
-                style={styles.textInput}
-                value={formData.lastName}
-                onChangeText={(text) => setFormData({ ...formData, lastName: text })}
-                placeholder="Enter your last name"
-                placeholderTextColor="#999"
-              />
-            </View>
-          </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Last Name *</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={formData.lastName}
+                    onChangeText={(text) => setFormData({ ...formData, lastName: text })}
+                    placeholder="Enter your last name"
+                    placeholderTextColor="#999"
+                    autoCapitalize="words"
+                  />
+                </View>
+              </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Contact Information</Text>
-            
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Phone Number</Text>
-              <TextInput
-                style={styles.textInput}
-                value={formData.phone}
-                onChangeText={(text) => setFormData({ ...formData, phone: text })}
-                placeholder="Enter your phone number"
-                placeholderTextColor="#999"
-                keyboardType="phone-pad"
-              />
-            </View>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Contact Information</Text>
+                <Text style={styles.sectionSubtitle}>Keep your contact details up to date</Text>
+                
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Phone Number</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={formData.phone}
+                    onChangeText={(text) => setFormData({ ...formData, phone: text })}
+                    placeholder="Enter your phone number"
+                    placeholderTextColor="#999"
+                    keyboardType="phone-pad"
+                  />
+                </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Email Address</Text>
-              <TextInput
-                style={styles.textInput}
-                value={formData.email}
-                onChangeText={(text) => setFormData({ ...formData, email: text })}
-                placeholder="Enter your email address"
-                placeholderTextColor="#999"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-          </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Email Address</Text>
+                  <TextInput
+                    style={[styles.textInput, styles.disabledInput]}
+                    value={formData.email}
+                    placeholder="Email address"
+                    placeholderTextColor="#999"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    editable={false}
+                  />
+                  <Text style={styles.inputNote}>
+                    Email cannot be changed for security reasons
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.section}>
+                <View style={styles.infoCard}>
+                  <Text style={styles.infoCardTitle}>💡 Profile Tips</Text>
+                  <Text style={styles.infoCardText}>
+                    • Keep your information up to date for better healthcare management
+                  </Text>
+                  <Text style={styles.infoCardText}>
+                    • Your phone number is used for appointment reminders
+                  </Text>
+                  <Text style={styles.infoCardText}>
+                    • All changes are saved securely and synchronized with your healthcare providers
+                  </Text>
+                </View>
+              </View>
+            </>
+          )}
 
           <View style={styles.bottomSpacing} />
         </ScrollView>
@@ -222,6 +249,17 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
   section: {
     marginTop: 24,
     paddingHorizontal: 20,
@@ -230,6 +268,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#023337',
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#666',
     marginBottom: 16,
   },
   inputContainer: {
@@ -250,6 +293,34 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
     color: '#023337',
+  },
+  disabledInput: {
+    backgroundColor: '#f8f9fa',
+    color: '#666',
+  },
+  inputNote: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  infoCard: {
+    backgroundColor: '#e8f5e8',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+  },
+  infoCardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#023337',
+    marginBottom: 8,
+  },
+  infoCardText: {
+    fontSize: 14,
+    color: '#4ea674',
+    lineHeight: 20,
+    marginBottom: 4,
   },
   bottomSpacing: {
     height: 40,

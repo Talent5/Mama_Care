@@ -13,6 +13,8 @@ import {
     View,
 } from 'react-native';
 import { authService } from '../services';
+import ConnectionStatus from '../components/ConnectionStatus';
+import ForgotPasswordModal from '../components/ForgotPasswordModal';
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
@@ -28,15 +30,17 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = 'Email address is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email.trim())) {
+      newErrors.email = 'Please enter a valid email address (e.g., user@example.com)';
     }
+    
     if (!formData.password.trim()) {
       newErrors.password = 'Password is required';
     }
@@ -51,38 +55,96 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
     }
 
     setIsLoading(true);
+    setErrors({}); // Clear previous errors
+    
     try {
+      console.log('Attempting login with email:', formData.email.trim());
+      
       const result = await authService.login({
-        email: formData.email.trim(),
+        email: formData.email.trim().toLowerCase(),
         password: formData.password
       });
 
+      console.log('Login result:', result);
+
       if (result.success) {
-        onLoginSuccess();
+        console.log('Login successful, calling onLoginSuccess');
+        // Small delay to ensure auth state is properly set
+        setTimeout(() => {
+          onLoginSuccess();
+        }, 100);
       } else {
-        Alert.alert('Login Failed', result.message || t('login.errors.invalidCredentials'));
+        // Handle specific error messages from the server
+        const errorMessage = result.message || 'Login failed';
+        
+        if (errorMessage.toLowerCase().includes('invalid email or password') ||
+            errorMessage.toLowerCase().includes('invalid credentials') ||
+            errorMessage.toLowerCase().includes('user not found') ||
+            errorMessage.toLowerCase().includes('incorrect password')) {
+          Alert.alert(
+            'Invalid Credentials',
+            'The email or password you entered is incorrect. Please double-check your credentials and try again.'
+          );
+        } else if (errorMessage.toLowerCase().includes('account not verified') ||
+                   errorMessage.toLowerCase().includes('email not verified')) {
+          Alert.alert(
+            'Account Not Verified',
+            'Please check your email and verify your account before signing in.'
+          );
+        } else if (errorMessage.toLowerCase().includes('account disabled') ||
+                   errorMessage.toLowerCase().includes('account suspended')) {
+          Alert.alert(
+            'Account Disabled',
+            'Your account has been disabled. Please contact support for assistance.'
+          );
+        } else if (errorMessage.toLowerCase().includes('only patients')) {
+          Alert.alert(
+            'Access Restricted',
+            'Only patient accounts can access the mobile app. Please use the web dashboard for other account types.'
+          );
+        } else {
+          Alert.alert(
+            'Login Failed',
+            errorMessage || 'Unable to sign in. Please try again.'
+          );
+        }
       }
     } catch (error) {
-      // Handle authentication errors more specifically
+      console.error('Login error:', error);
+      
+      // Handle different types of errors more specifically
       const errorMessage = error instanceof Error ? error.message : String(error);
       
-      if (errorMessage.includes('Invalid email or password') || 
-          errorMessage.includes('Authentication failed (401)')) {
+      if (errorMessage.includes('Authentication failed (401)') || 
+          errorMessage.includes('Unauthorized')) {
         Alert.alert(
           'Invalid Credentials',
           'The email or password you entered is incorrect. Please check your credentials and try again.'
         );
-      } else if (errorMessage.includes('Network request failed') || 
-                 errorMessage.includes('timeout')) {
+      } else if (errorMessage.includes('timeout') || 
+                 errorMessage.includes('Request timeout')) {
         Alert.alert(
-          'Connection Error',
+          'Connection Timeout',
+          'The request took too long to complete. Please check your internet connection and try again.'
+        );
+      } else if (errorMessage.includes('Network request failed') || 
+                 errorMessage.includes('Failed to fetch') ||
+                 errorMessage.includes('fetch')) {
+        Alert.alert(
+          'Network Error',
           'Unable to connect to the server. Please check your internet connection and try again.'
         );
+      } else if (errorMessage.includes('server')) {
+        Alert.alert(
+          'Server Error',
+          'The server is currently unavailable. Please try again in a few moments.'
+        );
       } else {
-        Alert.alert('Login Error', 'An unexpected error occurred. Please try again.');
+        Alert.alert(
+          'Login Error',
+          'An unexpected error occurred while trying to sign in. Please try again.'
+        );
       }
-      
-      console.error('Login error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -98,6 +160,9 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Only show connection status in development */}
+      {__DEV__ && <ConnectionStatus />}
+      
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoid}
@@ -117,6 +182,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
               <TextInput
                 style={[styles.input, errors.email && styles.inputError]}
                 placeholder={t('login.emailPlaceholder')}
+                placeholderTextColor="#999"
                 value={formData.email}
                 onChangeText={(value) => updateFormData('email', value)}
                 keyboardType="email-address"
@@ -133,6 +199,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
                 <TextInput
                   style={[styles.passwordInput, errors.password && styles.inputError]}
                   placeholder={t('login.passwordPlaceholder')}
+                  placeholderTextColor="#999"
                   value={formData.password}
                   onChangeText={(value) => updateFormData('password', value)}
                   secureTextEntry={!showPassword}
@@ -149,6 +216,16 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
                 </TouchableOpacity>
               </View>
               {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+            </View>
+
+            {/* Forgot Password Link */}
+            <View style={styles.forgotPasswordContainer}>
+              <TouchableOpacity 
+                onPress={() => setShowForgotPassword(true)}
+                style={styles.forgotPasswordButton}
+              >
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Login Button */}
@@ -177,6 +254,12 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        visible={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -233,6 +316,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 2,
     borderColor: 'transparent',
+    color: '#023337', // Explicit text color
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -256,6 +340,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 2,
     borderColor: 'transparent',
+    color: '#023337', // Explicit text color
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -281,6 +366,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
     marginLeft: 4,
+  },
+  forgotPasswordContainer: {
+    alignItems: 'flex-end',
+    marginBottom: 20,
+  },
+  forgotPasswordButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  forgotPasswordText: {
+    color: '#4ea674',
+    fontSize: 14,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   loginButton: {
     backgroundColor: '#4ea674',

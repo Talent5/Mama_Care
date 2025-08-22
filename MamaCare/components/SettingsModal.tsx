@@ -338,11 +338,12 @@ export default function SettingsModal({ visible, onClose, onLogout }: SettingsMo
         {
           icon: 'ℹ️',
           title: 'About MamaCare',
-          subtitle: 'Version 1.0.0',
+          subtitle: 'Version 1.0.3',
           onPress: () => {
+            const currentYear = new Date().getFullYear();
             Alert.alert(
               'About MamaCare',
-              'MamaCare Zimbabwe\nVersion 1.0.0\n\nA comprehensive maternal healthcare management system designed for Zimbabwean mothers.\n\n© 2024 MamaCare Zimbabwe'
+              `MamaCare Zimbabwe\nVersion 1.0.3\n\nA comprehensive maternal healthcare management system designed for Zimbabwean mothers.\n\n© ${currentYear} MamaCare Zimbabwe`
             );
           },
           showArrow: true,

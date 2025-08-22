@@ -43,18 +43,28 @@ export const getCurrentUserData = (): UserData | null => {
  * Convert authService user to StoredUser format
  */
 export const convertToStoredUser = (authUser: any): StoredUser | null => {
-  if (!authUser) return null;
+  if (!authUser) {
+    console.log('convertToStoredUser: authUser is null or undefined');
+    return null;
+  }
 
-  return {
-    _id: authUser.id,
-    firstName: authUser.firstName,
-    lastName: authUser.lastName,
-    email: authUser.email,
-    phone: authUser.phone,
-    role: authUser.role,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-  };
+  console.log('Converting authUser to StoredUser:', authUser);
+
+  try {
+    return {
+      _id: authUser.id || authUser._id || 'unknown',
+      firstName: authUser.firstName || '',
+      lastName: authUser.lastName || '',
+      email: authUser.email || '',
+      phone: authUser.phone || '',
+      role: authUser.role || 'patient',
+      isActive: authUser.isActive !== undefined ? authUser.isActive : true,
+      createdAt: authUser.createdAt || authUser.created || new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('Error converting authUser to StoredUser:', error);
+    return null;
+  }
 };
 
 /**

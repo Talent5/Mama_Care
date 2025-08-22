@@ -41,38 +41,38 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
     // Check if all fields are filled
     if (!formData.firstName.trim()) {
       newErrors.firstName = 'First name is required';
+    } else if (formData.firstName.trim().length < 2) {
+      newErrors.firstName = 'First name must be at least 2 characters';
     }
+    
     if (!formData.lastName.trim()) {
       newErrors.lastName = 'Last name is required';
+    } else if (formData.lastName.trim().length < 2) {
+      newErrors.lastName = 'Last name must be at least 2 characters';
     }
+    
     if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = 'Email address is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = 'Please enter a valid email address (e.g., user@example.com)';
     }
+    
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required';
+    } else if (!/^[\+]?[(]?[\d\s\-\(\)]{7,}$/.test(formData.phone.replace(/\s/g, ''))) {
+      newErrors.phone = 'Please enter a valid phone number (at least 7 digits)';
     }
+    
     if (!formData.password.trim()) {
       newErrors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters long';
     }
+    
     if (!formData.confirmPassword.trim()) {
       newErrors.confirmPassword = 'Please confirm your password';
-    }
-
-    // Check password match
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = t('register.errors.passwordMismatch');
-    }
-
-    // Basic phone number validation
-    if (formData.phone && !/^\+?[\d\s-()]+$/.test(formData.phone)) {
-      newErrors.phone = 'Please enter a valid phone number';
-    }
-
-    // Password strength (basic)
-    if (formData.password && formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
     }
 
     setErrors(newErrors);
@@ -112,13 +112,50 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
           });
           setErrors(fieldErrors);
         } else {
-          // Generic server error
-          setServerError(result.message || 'Registration failed. Please try again.');
+          // Handle specific error messages
+          const errorMessage = result.message || 'Registration failed';
+          
+          if (errorMessage.toLowerCase().includes('email already exists') ||
+              errorMessage.toLowerCase().includes('email is already registered') ||
+              errorMessage.toLowerCase().includes('user already exists')) {
+            setServerError('An account with this email address already exists. Please sign in instead or use a different email.');
+          } else if (errorMessage.toLowerCase().includes('phone number already exists') ||
+                     errorMessage.toLowerCase().includes('phone already registered')) {
+            setServerError('This phone number is already registered. Please use a different phone number or sign in instead.');
+          } else if (errorMessage.toLowerCase().includes('invalid email format') ||
+                     errorMessage.toLowerCase().includes('email format')) {
+            setErrors({ email: 'Please enter a valid email address' });
+          } else if (errorMessage.toLowerCase().includes('password too weak') ||
+                     errorMessage.toLowerCase().includes('password requirements')) {
+            setErrors({ password: 'Password must be at least 6 characters long and contain both letters and numbers' });
+          } else if (errorMessage.toLowerCase().includes('invalid phone number') ||
+                     errorMessage.toLowerCase().includes('phone format')) {
+            setErrors({ phone: 'Please enter a valid phone number' });
+          } else {
+            setServerError(errorMessage || 'Registration failed. Please try again.');
+          }
         }
       }
     } catch (error) {
       console.error('Registration error:', error);
-      setServerError('Failed to register. Please check your connection and try again.');
+      
+      // Handle different types of errors more specifically
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      if (errorMessage.includes('timeout') || 
+          errorMessage.includes('Request timeout')) {
+        setServerError('The request took too long to complete. Please check your internet connection and try again.');
+      } else if (errorMessage.includes('Network request failed') || 
+                 errorMessage.includes('Failed to fetch') ||
+                 errorMessage.includes('fetch')) {
+        setServerError('Unable to connect to the server. Please check your internet connection and try again.');
+      } else if (errorMessage.includes('server')) {
+        setServerError('The server is currently unavailable. Please try again in a few moments.');
+      } else if (errorMessage.includes('validation')) {
+        setServerError('Please check your information and try again. Some fields may contain invalid data.');
+      } else {
+        setServerError('An unexpected error occurred during registration. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -160,6 +197,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
               <TextInput
                 style={[styles.input, errors.firstName && styles.inputError]}
                 placeholder={t('register.firstNamePlaceholder')}
+                placeholderTextColor="#999"
                 value={formData.firstName}
                 onChangeText={(value) => updateFormData('firstName', value)}
                 autoCapitalize="words"
@@ -174,6 +212,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
               <TextInput
                 style={[styles.input, errors.lastName && styles.inputError]}
                 placeholder={t('register.lastNamePlaceholder')}
+                placeholderTextColor="#999"
                 value={formData.lastName}
                 onChangeText={(value) => updateFormData('lastName', value)}
                 autoCapitalize="words"
@@ -188,6 +227,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
               <TextInput
                 style={[styles.input, errors.email && styles.inputError]}
                 placeholder={t('register.emailPlaceholder')}
+                placeholderTextColor="#999"
                 value={formData.email}
                 onChangeText={(value) => updateFormData('email', value)}
                 keyboardType="email-address"
@@ -203,6 +243,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
               <TextInput
                 style={[styles.input, errors.phone && styles.inputError]}
                 placeholder={t('register.phoneNumberPlaceholder')}
+                placeholderTextColor="#999"
                 value={formData.phone}
                 onChangeText={(value) => updateFormData('phone', value)}
                 keyboardType="phone-pad"
@@ -218,6 +259,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
                 <TextInput
                   style={[styles.passwordInput, errors.password && styles.inputError]}
                   placeholder={t('register.passwordPlaceholder')}
+                  placeholderTextColor="#999"
                   value={formData.password}
                   onChangeText={(value) => updateFormData('password', value)}
                   secureTextEntry={!showPassword}
@@ -244,6 +286,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
                 <TextInput
                   style={[styles.passwordInput, errors.confirmPassword && styles.inputError]}
                   placeholder={t('register.confirmPasswordPlaceholder')}
+                  placeholderTextColor="#999"
                   value={formData.confirmPassword}
                   onChangeText={(value) => updateFormData('confirmPassword', value)}
                   secureTextEntry={!showConfirmPassword}
@@ -338,6 +381,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 2,
     borderColor: 'transparent',
+    color: '#023337', // Explicit text color
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -356,6 +400,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 2,
     borderColor: 'transparent',
+    color: '#023337', // Explicit text color
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

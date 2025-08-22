@@ -151,6 +151,34 @@ class AuthService {
     }
   }
 
+  // Forgot Password functionality
+  async forgotPassword(email: string): Promise<ApiResponse<{ message: string }>> {
+    try {
+      const response = await apiClient.post<{ message: string }>('/auth/forgot-password', {
+        email: email.trim().toLowerCase(),
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Forgot password failed:', error);
+      throw error;
+    }
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<ApiResponse<{ message: string }>> {
+    try {
+      const response = await apiClient.post<{ message: string }>('/auth/reset-password', {
+        token,
+        newPassword,
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Reset password failed:', error);
+      throw error;
+    }
+  }
+
   // Perform complete logout with all cleanup operations
   async performCompleteLogout(): Promise<void> {
     try {
