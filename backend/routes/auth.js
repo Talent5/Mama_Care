@@ -1,5 +1,6 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { body, validationResult } from 'express-validator';
 import User from '../models/User.js';
 import Patient from '../models/Patient.js';
@@ -395,6 +396,167 @@ router.put('/change-password', [
     res.status(500).json({
       success: false,
       message: 'Server error'
+    });
+  }
+});
+
+// @route   POST /api/auth/forgot-password
+// @desc    Request password reset
+// @access  Public
+router.post('/forgot-password', [
+  body('email').isEmail().normalizeEmail().withMessage('Please enter a valid email')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { email } = req.body;
+
+    // Find user
+    const user = await User.findOne({ email, isActive: true });
+    if (!user) {
+      // For security, don't reveal if user exists or not
+      return res.json({
+        success: true,
+        message: 'If an account with that email exists, we have sent a password reset link.'
+      });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    // Save reset token to user
+    user.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    user.passwordResetExpires = resetTokenExpires;
+    await user.save();
+
+    // Log security event
+    try {
+      await SecurityEvent.logEvent({
+        type: 'password_reset_requested',
+        userId: user._id,
+        userEmail: user.email,
+        userName: `${user.firstName} ${user.lastName}`,
+        ipAddress: req.ip || req.connection.remoteAddress || '127.0.0.1',
+        location: req.headers['cf-ipcountry'] || 'Unknown',
+        riskLevel: 'medium',
+        details: `Password reset requested for user: ${user.email}`,
+        userAgent: req.headers['user-agent'] || '',
+        metadata: { 
+          resetTokenGenerated: true,
+          expiresAt: new Date(resetTokenExpires)
+        }
+      });
+    } catch (logError) {
+      console.error('Failed to log security event:', logError);
+    }
+
+    // TODO: In production, send email with reset link
+    // For now, we'll include the token in response for testing (REMOVE IN PRODUCTION)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Reset token:', resetToken);
+      console.log('Reset URL would be: /reset-password?token=' + resetToken);
+    }
+
+    res.json({
+      success: true,
+      message: 'If an account with that email exists, we have sent a password reset link.',
+      // TODO: Remove this in production - only for development/testing
+      ...(process.env.NODE_ENV === 'development' && { 
+        resetToken: resetToken,
+        resetUrl: `/reset-password?token=${resetToken}`
+      })
+    });
+
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during password reset request'
+    });
+  }
+});
+
+// @route   POST /api/auth/reset-password
+// @desc    Reset password with token
+// @access  Public
+router.post('/reset-password', [
+  body('token').notEmpty().withMessage('Reset token is required'),
+  body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { token, newPassword } = req.body;
+
+    // Hash the token to compare with stored hash
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Find user with valid reset token
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() },
+      isActive: true
+    }).select('+password');
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset token'
+      });
+    }
+
+    // Update password
+    user.password = newPassword;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+
+    // Log security event
+    try {
+      await SecurityEvent.logEvent({
+        type: 'password_reset_completed',
+        userId: user._id,
+        userEmail: user.email,
+        userName: `${user.firstName} ${user.lastName}`,
+        ipAddress: req.ip || req.connection.remoteAddress || '127.0.0.1',
+        location: req.headers['cf-ipcountry'] || 'Unknown',
+        riskLevel: 'high',
+        details: `Password successfully reset for user: ${user.email}`,
+        userAgent: req.headers['user-agent'] || '',
+        metadata: { 
+          passwordChanged: true,
+          timestamp: new Date() 
+        }
+      });
+    } catch (logError) {
+      console.error('Failed to log security event:', logError);
+    }
+
+    res.json({
+      success: true,
+      message: 'Password has been reset successfully. You can now log in with your new password.'
+    });
+
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during password reset'
     });
   }
 });
