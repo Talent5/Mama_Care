@@ -105,8 +105,34 @@ router.get('/', auth, async (req, res) => {
 // @access  Private (All authenticated users)
 router.get('/stats', auth, async (req, res) => {
   try {
+    // Add simple in-memory cache for stats (1 minute cache)
+    const cacheKey = 'alert_stats';
+    const cacheTimeout = 60000; // 1 minute
+    
+    if (!global.alertStatsCache) {
+      global.alertStatsCache = {};
+    }
+    
+    const now = Date.now();
+    const cached = global.alertStatsCache[cacheKey];
+    
+    if (cached && (now - cached.timestamp) < cacheTimeout) {
+      console.log('📊 Returning cached alert stats');
+      return res.json({
+        success: true,
+        data: cached.data
+      });
+    }
+    
     const stats = await Alert.getAlertStats();
     
+    // Cache the results
+    global.alertStatsCache[cacheKey] = {
+      data: stats,
+      timestamp: now
+    };
+    
+    console.log('📊 Fresh alert stats computed and cached');
     res.json({
       success: true,
       data: stats

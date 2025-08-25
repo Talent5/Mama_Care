@@ -54,7 +54,7 @@ const detectedIpForFallback = PRIMARY_BASE_URL.match(/http:\/\/(\d+\.\d+\.\d+\.\
 
 export const API_CONFIG = {
   BASE_URL: PRIMARY_BASE_URL,
-  TIMEOUT: 15000,
+  TIMEOUT: 30000, // Increased from 15 seconds to 30 seconds
   RETRY_ATTEMPTS: 3,
   // Build fallbacks dynamically so changing networks only requires restart, not code edit
   FALLBACK_URLS: __DEV__

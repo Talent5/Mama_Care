@@ -30,27 +30,64 @@ class NotificationService {
     info: 0,
     total: 0
   };
+  private isLoading: boolean = false;
+  private lastFetchTime: number = 0;
+  private fetchCooldownMs: number = 60000; // Increased to 60 seconds cooldown between fetches
+  private consecutiveErrors: number = 0;
+  private maxConsecutiveErrors: number = 3;
 
   // Fetch notifications from alerts API
   async fetchNotifications(): Promise<NotificationData[]> {
+    // Prevent multiple simultaneous requests and implement cooldown
+    const now = Date.now();
+    if (this.isLoading || (now - this.lastFetchTime) < this.fetchCooldownMs) {
+      console.log('🔄 Skipping notification fetch (cooldown active or already loading)');
+      return this.notifications;
+    }
+
+    // Exponential backoff for consecutive errors
+    if (this.consecutiveErrors >= this.maxConsecutiveErrors) {
+      const backoffTime = Math.min(this.fetchCooldownMs * Math.pow(2, this.consecutiveErrors - this.maxConsecutiveErrors), 300000);
+      if ((now - this.lastFetchTime) < backoffTime) {
+        console.log(`🔄 Skipping notification fetch (error backoff active: ${backoffTime}ms)`);
+        return this.notifications;
+      }
+    }
+
+    this.isLoading = true;
+    this.lastFetchTime = now;
+
     try {
-      // Fetch unresolved alerts
-      const alertsResponse = await alertsAPI.getAlerts({
-        resolved: 'false',
-        limit: '50',
-        page: '1'
-      });
+      // Fetch unresolved alerts with a shorter timeout for this specific request
+      const alertsResponse = await Promise.race([
+        alertsAPI.getAlerts({
+          resolved: 'false',
+          limit: '50',
+          page: '1'
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Notification fetch timeout')), 20000) // 20 second timeout
+        )
+      ]);
 
       if (alertsResponse.success && alertsResponse.data?.alerts) {
         this.notifications = alertsResponse.data.alerts.map(this.alertToNotification);
         this.updateStats();
+        this.consecutiveErrors = 0; // Reset error count on success
+        console.log('✅ Successfully fetched notifications');
         return this.notifications;
       }
 
+      console.log('⚠️ No notification data in response');
       return [];
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
-      return [];
+    } catch (error: unknown) {
+      this.consecutiveErrors++;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('❌ Failed to fetch notifications:', errorMessage);
+      // Return cached notifications on error
+      return this.notifications;
+    } finally {
+      this.isLoading = false;
     }
   }
 
@@ -90,8 +127,30 @@ class NotificationService {
 
   // Get notification stats
   async getStats(): Promise<NotificationStats> {
+    // Prevent multiple simultaneous requests and implement cooldown
+    const now = Date.now();
+    if (this.isLoading || (now - this.lastFetchTime) < this.fetchCooldownMs) {
+      console.log('🔄 Returning cached notification stats (cooldown active)');
+      return this.stats;
+    }
+
+    // Exponential backoff for consecutive errors
+    if (this.consecutiveErrors >= this.maxConsecutiveErrors) {
+      const backoffTime = Math.min(this.fetchCooldownMs * Math.pow(2, this.consecutiveErrors - this.maxConsecutiveErrors), 300000);
+      if ((now - this.lastFetchTime) < backoffTime) {
+        console.log(`🔄 Returning cached stats (error backoff active: ${backoffTime}ms)`);
+        return this.stats;
+      }
+    }
+
     try {
-      const alertStatsResponse = await alertsAPI.getAlertStats();
+      // Race the API call with a timeout
+      const alertStatsResponse = await Promise.race([
+        alertsAPI.getAlertStats(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Stats fetch timeout')), 20000) // 20 second timeout
+        )
+      ]);
       
       if (alertStatsResponse.success && alertStatsResponse.data) {
         const alertStats = alertStatsResponse.data;
@@ -103,11 +162,16 @@ class NotificationService {
           info: alertStats.info || 0,
           total: alertStats.totalUnresolved || 0
         };
+        this.consecutiveErrors = 0; // Reset error count on success
+        console.log('✅ Successfully fetched notification stats');
       }
 
       return this.stats;
-    } catch (error) {
-      console.error('Failed to fetch notification stats:', error);
+    } catch (error: unknown) {
+      this.consecutiveErrors++;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('❌ Failed to fetch notification stats:', errorMessage);
+      // Return cached stats on error
       return this.stats;
     }
   }
@@ -240,6 +304,30 @@ class NotificationService {
   // Get current notifications without API call
   getCurrentNotifications(): NotificationData[] {
     return [...this.notifications];
+  }
+
+  // Reset fetch cooldown (for manual refresh)
+  resetCooldown(): void {
+    this.lastFetchTime = 0;
+    this.consecutiveErrors = 0; // Also reset error count
+    console.log('🔄 Notification fetch cooldown and error count reset');
+  }
+
+  // Check if service is currently loading
+  isCurrentlyLoading(): boolean {
+    return this.isLoading;
+  }
+
+  // Get current error state
+  getErrorState(): { consecutiveErrors: number; isInBackoff: boolean } {
+    const now = Date.now();
+    const isInBackoff = this.consecutiveErrors >= this.maxConsecutiveErrors && 
+      (now - this.lastFetchTime) < Math.min(this.fetchCooldownMs * Math.pow(2, this.consecutiveErrors - this.maxConsecutiveErrors), 300000);
+    
+    return {
+      consecutiveErrors: this.consecutiveErrors,
+      isInBackoff
+    };
   }
 }
 

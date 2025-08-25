@@ -342,60 +342,164 @@ const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = ({
       
       <View style={styles.fieldContainer}>
         <Text style={styles.label}>Doctor *</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={selectedDoctor}
-            onValueChange={setSelectedDoctor}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select a doctor..." value="" />
-            {doctors.map((doctor) => (
-              <Picker.Item
-                key={doctor._id}
-                label={`${doctor.firstName} ${doctor.lastName}${doctor.specialization ? ` - ${doctor.specialization}` : ''}`}
-                value={doctor._id}
-              />
-            ))}
-          </Picker>
-        </View>
+        {Platform.OS === 'android' ? (
+          // Alternative approach for Android with better visibility
+          <View>
+            <TouchableOpacity 
+              style={[styles.dropdownButton, selectedDoctor ? styles.dropdownSelected : null]}
+              onPress={() => {
+                // Show picker in alert for better visibility
+                Alert.alert(
+                  'Select Doctor',
+                  'Choose your preferred doctor',
+                  doctors.map(doctor => ({
+                    text: `${doctor.firstName} ${doctor.lastName}${doctor.specialization ? ` - ${doctor.specialization}` : ''}`,
+                    onPress: () => setSelectedDoctor(doctor._id)
+                  })).concat([{ text: 'Cancel', style: 'cancel' }])
+                );
+              }}
+            >
+              <Text style={[styles.dropdownText, selectedDoctor ? styles.dropdownTextSelected : styles.dropdownTextPlaceholder]}>
+                {selectedDoctor 
+                  ? `${doctors.find(d => d._id === selectedDoctor)?.firstName} ${doctors.find(d => d._id === selectedDoctor)?.lastName}`
+                  : 'Select a doctor...'
+                }
+              </Text>
+              <Text style={styles.dropdownArrow}>▼</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          // iOS Picker with improved styling
+          <View style={[styles.pickerContainer, selectedDoctor ? styles.pickerSelected : null]}>
+            <Picker
+              selectedValue={selectedDoctor}
+              onValueChange={setSelectedDoctor}
+              style={styles.picker}
+              itemStyle={styles.pickerItem}
+            >
+              <Picker.Item label="Select a doctor..." value="" color="#999" />
+              {doctors.map((doctor) => (
+                <Picker.Item
+                  key={doctor._id}
+                  label={`${doctor.firstName} ${doctor.lastName}${doctor.specialization ? ` - ${doctor.specialization}` : ''}`}
+                  value={doctor._id}
+                  color="#023337"
+                />
+              ))}
+            </Picker>
+          </View>
+        )}
+        {selectedDoctor && (
+          <View style={styles.selectedIndicator}>
+            <Text style={styles.selectedText}>
+              ✓ {doctors.find(d => d._id === selectedDoctor)?.firstName} {doctors.find(d => d._id === selectedDoctor)?.lastName}
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.fieldContainer}>
         <Text style={styles.label}>Appointment Type *</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={appointmentType}
-            onValueChange={setAppointmentType}
-            style={styles.picker}
+        {Platform.OS === 'android' ? (
+          <TouchableOpacity 
+            style={[styles.dropdownButton, appointmentType ? styles.dropdownSelected : null]}
+            onPress={() => {
+              Alert.alert(
+                'Select Appointment Type',
+                'Choose the type of appointment',
+                appointmentTypes.map(type => ({
+                  text: type.label,
+                  onPress: () => setAppointmentType(type.value)
+                })).concat([{ text: 'Cancel', style: 'cancel' }])
+              );
+            }}
           >
-            {appointmentTypes.map((type) => (
-              <Picker.Item
-                key={type.value}
-                label={type.label}
-                value={type.value}
-              />
-            ))}
-          </Picker>
-        </View>
+            <Text style={[styles.dropdownText, appointmentType ? styles.dropdownTextSelected : styles.dropdownTextPlaceholder]}>
+              {appointmentType 
+                ? appointmentTypes.find(t => t.value === appointmentType)?.label
+                : 'Select appointment type...'
+              }
+            </Text>
+            <Text style={styles.dropdownArrow}>▼</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.pickerContainer, appointmentType ? styles.pickerSelected : null]}>
+            <Picker
+              selectedValue={appointmentType}
+              onValueChange={setAppointmentType}
+              style={styles.picker}
+              itemStyle={styles.pickerItem}
+            >
+              {appointmentTypes.map((type) => (
+                <Picker.Item
+                  key={type.value}
+                  label={type.label}
+                  value={type.value}
+                  color="#023337"
+                />
+              ))}
+            </Picker>
+          </View>
+        )}
+        {appointmentType && (
+          <View style={styles.selectedIndicator}>
+            <Text style={styles.selectedText}>
+              ✓ {appointmentTypes.find(t => t.value === appointmentType)?.label}
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.fieldContainer}>
         <Text style={styles.label}>Priority</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={priority}
-            onValueChange={setPriority}
-            style={styles.picker}
+        {Platform.OS === 'android' ? (
+          <TouchableOpacity 
+            style={[styles.dropdownButton, priority ? styles.dropdownSelected : null]}
+            onPress={() => {
+              Alert.alert(
+                'Select Priority',
+                'Choose the priority level',
+                priorities.map(p => ({
+                  text: p.label,
+                  onPress: () => setPriority(p.value)
+                })).concat([{ text: 'Cancel', style: 'cancel' }])
+              );
+            }}
           >
-            {priorities.map((priority) => (
-              <Picker.Item
-                key={priority.value}
-                label={priority.label}
-                value={priority.value}
-              />
-            ))}
-          </Picker>
-        </View>
+            <Text style={[styles.dropdownText, priority ? styles.dropdownTextSelected : styles.dropdownTextPlaceholder]}>
+              {priority 
+                ? priorities.find(p => p.value === priority)?.label
+                : 'Select priority...'
+              }
+            </Text>
+            <Text style={styles.dropdownArrow}>▼</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.pickerContainer, priority ? styles.pickerSelected : null]}>
+            <Picker
+              selectedValue={priority}
+              onValueChange={setPriority}
+              style={styles.picker}
+              itemStyle={styles.pickerItem}
+            >
+              {priorities.map((priority) => (
+                <Picker.Item
+                  key={priority.value}
+                  label={priority.label}
+                  value={priority.value}
+                  color="#023337"
+                />
+              ))}
+            </Picker>
+          </View>
+        )}
+        {priority && (
+          <View style={styles.selectedIndicator}>
+            <Text style={styles.selectedText}>
+              ✓ {priorities.find(p => p.value === priority)?.label}
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -707,8 +811,64 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     overflow: 'hidden',
   },
+  pickerSelected: {
+    borderColor: '#4ea674',
+    borderWidth: 2,
+    backgroundColor: '#f0f9f2',
+  },
   picker: {
     height: 50,
+    color: '#023337',
+    backgroundColor: '#ffffff',
+  },
+  pickerItem: {
+    fontSize: 16,
+    color: '#023337',
+    backgroundColor: '#ffffff',
+  },
+  dropdownButton: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dropdownSelected: {
+    borderColor: '#4ea674',
+    borderWidth: 2,
+    backgroundColor: '#f0f9f2',
+  },
+  dropdownText: {
+    fontSize: 16,
+    flex: 1,
+  },
+  dropdownTextSelected: {
+    color: '#023337',
+    fontWeight: '600',
+  },
+  dropdownTextPlaceholder: {
+    color: '#999',
+  },
+  dropdownArrow: {
+    color: '#4ea674',
+    fontSize: 12,
+    marginLeft: 8,
+  },
+  selectedIndicator: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: '#4ea674',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  selectedText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   textInput: {
     borderWidth: 1,

@@ -113,12 +113,12 @@ router.post('/:patientId/assign-doctor', [
   }
 });
 
-// @route   GET /api/patients/my-patients
-// @desc    Get patients assigned to the current doctor
-// @access  Private (Doctor, Healthcare Provider)
+// @route   GET /api/patients/assignment/my-patients
+// @desc    Get patients assigned to the current doctor (or all patients for system admin)
+// @access  Private (Doctor, Healthcare Provider, System Admin)
 router.get('/my-patients', [
   auth,
-  roleAuth('doctor', 'healthcare_provider')
+  roleAuth('doctor', 'healthcare_provider', 'system_admin')
 ], async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -127,8 +127,14 @@ router.get('/my-patients', [
     
     const { search, riskLevel, isActive } = req.query;
     
-    // Build query for patients assigned to this doctor
-    let query = { assignedDoctor: req.user.id };
+    // Build query for patients
+    let query = {};
+    
+    // If user is not system admin, only show patients assigned to them
+    if (req.user.role !== 'system_admin') {
+      query.assignedDoctor = req.user.id;
+    }
+    
     if (isActive !== undefined) query.isActive = isActive === 'true';
     if (riskLevel) query['currentPregnancy.riskLevel'] = riskLevel;
 

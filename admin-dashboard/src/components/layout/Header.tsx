@@ -75,12 +75,12 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, sidebarOpen }) => {
     
     initNotifications();
     
-    // Refresh every 5 minutes instead of every minute to reduce load
+    // Refresh every 10 minutes instead of 5 minutes to reduce load
     const interval = setInterval(() => {
       if (isMounted) {
         loadNotifications();
       }
-    }, 300000);
+    }, 600000);
     
     return () => {
       isMounted = false;

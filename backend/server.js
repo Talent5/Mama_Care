@@ -81,6 +81,27 @@ app.get('/api/health', (req, res) => {
   res.json(healthStatus);
 });
 
+// Request timeout middleware (30 seconds)
+app.use((req, res, next) => {
+  req.timeout = 30000; // 30 seconds
+  
+  const timer = setTimeout(() => {
+    if (!res.headersSent) {
+      console.log(`⏰ Request timeout: ${req.method} ${req.path}`);
+      res.status(408).json({
+        success: false,
+        message: 'Request timeout'
+      });
+    }
+  }, req.timeout);
+  
+  res.on('finish', () => {
+    clearTimeout(timer);
+  });
+  
+  next();
+});
+
 // Apply CORS middleware with production configuration
 const allowedOrigins = [
   'https://mama-care-2m7mq1hws-talent5s-projects.vercel.app', // Your current Vercel frontend

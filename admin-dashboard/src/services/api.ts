@@ -28,7 +28,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 // Create axios instance with default configuration
 const api = axios.create({
   baseURL: API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`,
-  timeout: 10000,
+  timeout: 30000, // Increased from 10 seconds to 30 seconds
   headers: {
     'Content-Type': 'application/json',
   },
@@ -270,7 +270,8 @@ export const usersAPI = {
     console.log('🚀 Sending user creation request to backend:', userData);
     console.log('🌐 API Base URL:', api.defaults.baseURL);
     try {
-      const response = await api.post('/users', userData);
+      const response = await api.post('/users', userData);
+
       return response.data;
     } catch (error) {
       console.error('❌ User creation error:', error);
@@ -319,7 +320,8 @@ export const userManagementAPI = {
   // Create new user
   createUser: async (userData: CreateUserRequest): Promise<ApiResponse<User>> => {
     console.log('🚀 Creating user with data:', userData);
-    const response = await api.post('/users', userData);
+    const response = await api.post('/users', userData);
+
     return response.data;
   },
 
@@ -581,6 +583,68 @@ export const alertsAPI = {
       params.append('resolved', resolved.toString());
     }
     const response = await api.get(`/alerts/patient/${patientId}?${params.toString()}`);
+    return response.data;
+  }
+};
+
+// Patient Assignment API
+export const patientAssignmentAPI = {
+  // Get patients assigned to the current healthcare provider (for doctors)
+  getMyPatients: async (filters?: {
+    page?: string;
+    limit?: string;
+    search?: string;
+    riskLevel?: string;
+    isActive?: string;
+  }) => {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, value.toString());
+        }
+      });
+    }
+    const response = await api.get(`/patients/assignment/my-patients?${params.toString()}`);
+    return response.data;
+  },
+
+  // Get all app users (for system admin)
+  getAllAppUsers: async (filters?: {
+    page?: string;
+    limit?: string;
+    search?: string;
+    hasPatientProfile?: string;
+    isActive?: string;
+  }) => {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, value.toString());
+        }
+      });
+    }
+    const response = await api.get(`/patients/assignment/all-app-users?${params.toString()}`);
+    return response.data;
+  },
+
+  // Assign doctor to patient
+  assignDoctor: async (patientId: string, doctorId: string, reason?: string) => {
+    const response = await api.post(`/patients/assignment/${patientId}/assign-doctor`, {
+      doctorId,
+      reason
+    });
+    return response.data;
+  },
+
+  // Auto-assign doctor to patient
+  autoAssignDoctor: async (patientId: string, region?: string, specialization?: string) => {
+    const response = await api.post('/patients/assignment/auto-assign-doctor', {
+      patientId,
+      region,
+      specialization
+    });
     return response.data;
   }
 };

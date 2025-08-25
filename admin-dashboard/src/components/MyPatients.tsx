@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Heart, Calendar, Phone, Mail, MapPin, AlertTriangle, Clock, User } from 'lucide-react';
+import { patientAssignmentAPI, patientsAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 interface AssignedPatient {
   _id: string;
@@ -35,6 +37,7 @@ interface MyPatientsResponse {
 }
 
 const MyPatients: React.FC = () => {
+  const { user } = useAuth();
   const [patients, setPatients] = useState<AssignedPatient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,42 +54,79 @@ const MyPatients: React.FC = () => {
   });
   const [selectedPatient, setSelectedPatient] = useState<AssignedPatient | null>(null);
 
-  useEffect(() => {
-    loadMyPatients();
-  }, [searchTerm, filters, pagination.current]);
-
-  const loadMyPatients = async () => {
+  const loadMyPatients = React.useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const params = new URLSearchParams({
+      const params = {
         page: pagination.current.toString(),
         limit: pagination.limit.toString(),
-      });
-
-      if (searchTerm) params.append('search', searchTerm);
-      if (filters.riskLevel) params.append('riskLevel', filters.riskLevel);
-      if (filters.isActive) params.append('isActive', filters.isActive);
-
-      const response = await fetch(`/api/patients/assignment/my-patients?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load patients');
-      }
-
-      const data: { success: boolean; data: MyPatientsResponse } = await response.json();
+        ...(searchTerm && { search: searchTerm }),
+        ...(filters.riskLevel && { riskLevel: filters.riskLevel }),
+        ...(filters.isActive && { isActive: filters.isActive }),
+      };
       
-      if (data.success) {
-        setPatients(data.data.patients);
-        setPagination(data.data.pagination);
+      // Determine which API to use based on user role
+      if (user?.role === 'system_admin') {
+        // System admin can see all app users
+        const response = await patientAssignmentAPI.getAllAppUsers(params);
+        if (response.success) {
+          // Transform app users to match patient format
+          const transformedPatients = response.data.users
+            .filter((appUser: { hasPatientProfile: boolean }) => appUser.hasPatientProfile)
+            .map((appUser: {
+              id: string;
+              firstName: string;
+              lastName: string;
+              email: string;
+              phone?: string;
+              avatar?: string;
+              isActive: boolean;
+              createdAt: string;
+              patientInfo?: {
+                id: string;
+                isPregnant: boolean;
+                currentWeek?: number;
+                riskLevel: string;
+                assignmentDate?: string;
+              };
+            }) => ({
+              _id: appUser.patientInfo?.id || appUser.id,
+              user: {
+                _id: appUser.id,
+                firstName: appUser.firstName,
+                lastName: appUser.lastName,
+                email: appUser.email,
+                phone: appUser.phone,
+                avatar: appUser.avatar
+              },
+              currentPregnancy: appUser.patientInfo ? {
+                isPregnant: appUser.patientInfo.isPregnant,
+                currentWeek: appUser.patientInfo.currentWeek,
+                riskLevel: appUser.patientInfo.riskLevel,
+              } : undefined,
+              assignmentDate: appUser.patientInfo?.assignmentDate || appUser.createdAt,
+              assignmentReason: 'System admin view',
+              isActive: appUser.isActive
+            }));
+          setPatients(transformedPatients);
+          setPagination(response.data.pagination);
+        }
+      } else if (user?.role === 'doctor' || user?.role === 'healthcare_provider') {
+        // Healthcare providers see their assigned patients
+        const response = await patientAssignmentAPI.getMyPatients(params);
+        if (response.success) {
+          setPatients(response.data.patients);
+          setPagination(response.data.pagination);
+        }
       } else {
-        throw new Error('Failed to load patients');
+        // For other roles, use the general patients API
+        const response = await patientsAPI.getPatients(params);
+        if (response.success) {
+          setPatients(response.data || []);
+          setPagination(prev => response.pagination || prev);
+        }
       }
 
     } catch (err) {
@@ -95,7 +135,11 @@ const MyPatients: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.role, pagination, searchTerm, filters.riskLevel, filters.isActive]);
+
+  useEffect(() => {
+    loadMyPatients();
+  }, [loadMyPatients]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {

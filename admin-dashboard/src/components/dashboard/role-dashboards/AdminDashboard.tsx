@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
   Server, 
   Users, 
@@ -15,7 +15,8 @@ import {
   FileText,
   Bell,
   Lock,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import MetricCard from '../MetricCard';
 import ChartCard from '../ChartCard';
@@ -28,18 +29,49 @@ interface AdminDashboardProps {
   userName: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ widgets, userName }) => {
   const { data: dashboardData, loading: dashboardLoading, error: dashboardError, refetch: refetchDashboard } = useDashboardData('30d');
   const { data: adminData, loading: adminLoading, error: adminError, refetch: refetchAdmin } = useAdminDashboardData();
+  
+  // Loading states for different actions
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loadingStates, setLoadingStates] = useState({
+    userManagement: false,
+    systemManagement: false,
+    securityManagement: false,
+    analyticsReports: false,
+    databaseManagement: false,
+    alertManagement: false,
+    auditLogs: false,
+    systemSettings: false
+  });
   
   // Combine loading states
   const loading = dashboardLoading || adminLoading;
   const error = dashboardError || adminError;
 
-  const refetch = () => {
-    refetchDashboard();
-    refetchAdmin();
-  };
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([refetchDashboard(), refetchAdmin()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refetchDashboard, refetchAdmin]);
+
+  const handleNavigation = useCallback(async (action: keyof typeof loadingStates, url: string) => {
+    setLoadingStates(prev => ({ ...prev, [action]: true }));
+    
+    try {
+      // Simulate some processing time for saving/preparing data
+      await new Promise(resolve => setTimeout(resolve, 500));
+      window.location.href = url;
+    } catch (error) {
+      console.error(`Navigation to ${url} failed:`, error);
+      setLoadingStates(prev => ({ ...prev, [action]: false }));
+    }
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -86,10 +118,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ widgets, userName }) =>
         <div className="text-center text-red-600">
           <p>Error loading dashboard data: {error}</p>
           <button 
-            onClick={refetch}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
           >
-            Retry
+            {isRefreshing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
+            {isRefreshing ? 'Retrying...' : 'Retry'}
           </button>
         </div>
       </div>
@@ -107,11 +145,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ widgets, userName }) =>
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={refetch}
-              className="flex items-center gap-2 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="flex items-center gap-2 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <RefreshCw className="w-4 h-4" />
-              Refresh
+              {isRefreshing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
             </button>
           </div>
         </div>
@@ -212,8 +255,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ widgets, userName }) =>
                 <Users className="w-5 h-5 text-blue-500" />
                 Recent User Activity
               </h3>
-              <button className="text-sm text-blue-600 hover:text-blue-700">
-                Manage Users
+              <button 
+                onClick={() => handleNavigation('userManagement', '/admin/users')}
+                disabled={loadingStates.userManagement}
+                className="text-sm text-blue-600 hover:text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              >
+                {loadingStates.userManagement && <Loader2 className="w-3 h-3 animate-spin" />}
+                {loadingStates.userManagement ? 'Loading...' : 'Manage Users'}
               </button>
             </div>
           </div>
@@ -249,8 +297,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ widgets, userName }) =>
                 <AlertTriangle className="w-5 h-5 text-orange-500" />
                 System Alerts
               </h3>
-              <button className="text-sm text-orange-600 hover:text-orange-700">
-                View All
+              <button 
+                onClick={() => handleNavigation('alertManagement', '/admin/alerts')}
+                disabled={loadingStates.alertManagement}
+                className="text-sm text-orange-600 hover:text-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              >
+                {loadingStates.alertManagement && <Loader2 className="w-3 h-3 animate-spin" />}
+                {loadingStates.alertManagement ? 'Loading...' : 'View All'}
               </button>
             </div>
           </div>
@@ -286,77 +339,145 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ widgets, userName }) =>
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <button 
-              onClick={() => window.location.href = '/admin/users'}
-              className="flex items-center gap-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-left"
+              onClick={() => handleNavigation('userManagement', '/admin/users')}
+              disabled={loadingStates.userManagement}
+              className="flex items-center gap-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Users className="w-6 h-6 text-blue-600 flex-shrink-0" />
+              {loadingStates.userManagement ? (
+                <Loader2 className="w-6 h-6 text-blue-600 flex-shrink-0 animate-spin" />
+              ) : (
+                <Users className="w-6 h-6 text-blue-600 flex-shrink-0" />
+              )}
               <div>
-                <p className="font-medium text-blue-900">Advanced User Management</p>
+                <p className="font-medium text-blue-900">
+                  {loadingStates.userManagement ? 'Loading...' : 'Advanced User Management'}
+                </p>
                 <p className="text-sm text-blue-600">Complete user control & analytics</p>
               </div>
             </button>
             
             <button 
-              onClick={() => window.location.href = '/admin/system'}
-              className="flex items-center gap-3 p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors text-left"
+              onClick={() => handleNavigation('systemManagement', '/admin/system')}
+              disabled={loadingStates.systemManagement}
+              className="flex items-center gap-3 p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Server className="w-6 h-6 text-green-600 flex-shrink-0" />
+              {loadingStates.systemManagement ? (
+                <Loader2 className="w-6 h-6 text-green-600 flex-shrink-0 animate-spin" />
+              ) : (
+                <Server className="w-6 h-6 text-green-600 flex-shrink-0" />
+              )}
               <div>
-                <p className="font-medium text-green-900">System Management</p>
+                <p className="font-medium text-green-900">
+                  {loadingStates.systemManagement ? 'Loading...' : 'System Management'}
+                </p>
                 <p className="text-sm text-green-600">Monitor servers & infrastructure</p>
               </div>
             </button>
             
             <button 
-              onClick={() => window.location.href = '/admin/security'}
-              className="flex items-center gap-3 p-4 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-left"
+              onClick={() => handleNavigation('securityManagement', '/admin/security')}
+              disabled={loadingStates.securityManagement}
+              className="flex items-center gap-3 p-4 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Lock className="w-6 h-6 text-red-600 flex-shrink-0" />
+              {loadingStates.securityManagement ? (
+                <Loader2 className="w-6 h-6 text-red-600 flex-shrink-0 animate-spin" />
+              ) : (
+                <Lock className="w-6 h-6 text-red-600 flex-shrink-0" />
+              )}
               <div>
-                <p className="font-medium text-red-900">Security Management</p>
+                <p className="font-medium text-red-900">
+                  {loadingStates.securityManagement ? 'Loading...' : 'Security Management'}
+                </p>
                 <p className="text-sm text-red-600">Security policies & monitoring</p>
               </div>
             </button>
             
             <button 
-              onClick={() => window.location.href = '/admin/analytics'}
-              className="flex items-center gap-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors text-left"
+              onClick={() => handleNavigation('analyticsReports', '/admin/analytics')}
+              disabled={loadingStates.analyticsReports}
+              className="flex items-center gap-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <BarChart3 className="w-6 h-6 text-purple-600 flex-shrink-0" />
+              {loadingStates.analyticsReports ? (
+                <Loader2 className="w-6 h-6 text-purple-600 flex-shrink-0 animate-spin" />
+              ) : (
+                <BarChart3 className="w-6 h-6 text-purple-600 flex-shrink-0" />
+              )}
               <div>
-                <p className="font-medium text-purple-900">Analytics & Reports</p>
+                <p className="font-medium text-purple-900">
+                  {loadingStates.analyticsReports ? 'Loading...' : 'Analytics & Reports'}
+                </p>
                 <p className="text-sm text-purple-600">System analytics & reporting</p>
               </div>
             </button>
 
-            <button className="flex items-center gap-3 p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors text-left">
-              <Database className="w-6 h-6 text-orange-600 flex-shrink-0" />
+            <button 
+              onClick={() => handleNavigation('databaseManagement', '/admin/database')}
+              disabled={loadingStates.databaseManagement}
+              className="flex items-center gap-3 p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loadingStates.databaseManagement ? (
+                <Loader2 className="w-6 h-6 text-orange-600 flex-shrink-0 animate-spin" />
+              ) : (
+                <Database className="w-6 h-6 text-orange-600 flex-shrink-0" />
+              )}
               <div>
-                <p className="font-medium text-orange-900">Database Management</p>
+                <p className="font-medium text-orange-900">
+                  {loadingStates.databaseManagement ? 'Loading...' : 'Database Management'}
+                </p>
                 <p className="text-sm text-orange-600">Backup, optimize & maintain</p>
               </div>
             </button>
             
-            <button className="flex items-center gap-3 p-4 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors text-left">
-              <Bell className="w-6 h-6 text-indigo-600 flex-shrink-0" />
+            <button 
+              onClick={() => handleNavigation('alertManagement', '/admin/alerts')}
+              disabled={loadingStates.alertManagement}
+              className="flex items-center gap-3 p-4 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loadingStates.alertManagement ? (
+                <Loader2 className="w-6 h-6 text-indigo-600 flex-shrink-0 animate-spin" />
+              ) : (
+                <Bell className="w-6 h-6 text-indigo-600 flex-shrink-0" />
+              )}
               <div>
-                <p className="font-medium text-indigo-900">Alert Management</p>
+                <p className="font-medium text-indigo-900">
+                  {loadingStates.alertManagement ? 'Loading...' : 'Alert Management'}
+                </p>
                 <p className="text-sm text-indigo-600">Configure system alerts</p>
               </div>
             </button>
 
-            <button className="flex items-center gap-3 p-4 bg-pink-50 hover:bg-pink-100 rounded-lg transition-colors text-left">
-              <FileText className="w-6 h-6 text-pink-600 flex-shrink-0" />
+            <button 
+              onClick={() => handleNavigation('auditLogs', '/admin/audit')}
+              disabled={loadingStates.auditLogs}
+              className="flex items-center gap-3 p-4 bg-pink-50 hover:bg-pink-100 rounded-lg transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loadingStates.auditLogs ? (
+                <Loader2 className="w-6 h-6 text-pink-600 flex-shrink-0 animate-spin" />
+              ) : (
+                <FileText className="w-6 h-6 text-pink-600 flex-shrink-0" />
+              )}
               <div>
-                <p className="font-medium text-pink-900">Audit Logs</p>
+                <p className="font-medium text-pink-900">
+                  {loadingStates.auditLogs ? 'Loading...' : 'Audit Logs'}
+                </p>
                 <p className="text-sm text-pink-600">System activity & compliance</p>
               </div>
             </button>
 
-            <button className="flex items-center gap-3 p-4 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors text-left">
-              <Settings className="w-6 h-6 text-teal-600 flex-shrink-0" />
+            <button 
+              onClick={() => handleNavigation('systemSettings', '/admin/settings')}
+              disabled={loadingStates.systemSettings}
+              className="flex items-center gap-3 p-4 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loadingStates.systemSettings ? (
+                <Loader2 className="w-6 h-6 text-teal-600 flex-shrink-0 animate-spin" />
+              ) : (
+                <Settings className="w-6 h-6 text-teal-600 flex-shrink-0" />
+              )}
               <div>
-                <p className="font-medium text-teal-900">System Settings</p>
+                <p className="font-medium text-teal-900">
+                  {loadingStates.systemSettings ? 'Loading...' : 'System Settings'}
+                </p>
                 <p className="text-sm text-teal-600">Global configuration</p>
               </div>
             </button>
